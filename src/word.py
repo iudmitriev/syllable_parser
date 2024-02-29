@@ -11,12 +11,13 @@ class Word:
             symbol.split(':') for symbol in phoneme_symbols
         ]
         self.stress_info = []
-
+        self.num_vowels = 0
         for i in range(len(grapheme_symbols)):
             stress_info = -1
             for phoneme in phoneme_symbols[i]:
                 if self.is_phoneme_vowel(phoneme):
                     stress_info = max(stress_info, int(phoneme[-1]))
+                    self.num_vowels += 1
             
             self.stress_info.append(stress_info)
         
@@ -24,7 +25,7 @@ class Word:
         for i in range(len(grapheme_symbols)):
             stress_info = self.stress_info[i]
             if stress_info == -1:
-                banned_grapheme_list = STRICT_VOWELS
+                banned_grapheme_list = VOWELS
             else:
                 banned_grapheme_list = STRICT_CONSONANTS
             graphemes = grapheme_symbols[i]
@@ -32,12 +33,12 @@ class Word:
 
             if i != len(grapheme_symbols) - 1:
                 next_is_different = (self.stress_info[i] == -1) + (self.stress_info[i+1] == -1) == 1
-                while next_is_different and len(graphemes) > 1 and graphemes[-1].lower() in banned_grapheme_list:
+                while next_is_different and len(graphemes) >= 1 and graphemes[-1].lower() in banned_grapheme_list:
                         grapheme_symbols[i + 1] = [graphemes[-1]] + grapheme_symbols[i + 1]
                         graphemes.pop()
             if i != 0:
                 prev_is_different = (self.stress_info[i-1] == -1) + (self.stress_info[i] == -1) == 1
-                while prev_is_different and len(graphemes) > 1 and graphemes[0].lower() in banned_grapheme_list:
+                while prev_is_different and len(graphemes) >= 1 and graphemes[0].lower() in banned_grapheme_list:
                         grapheme_symbols[i - 1] = grapheme_symbols[i - 1] + [graphemes[0]]
                         graphemes.pop(0)
             
@@ -70,8 +71,7 @@ class Word:
                 else:
                     word += PHANTOM_VOWEL
 
-                if (self.stress_info[i] == self.word_stress and 
-                    self.word_stress > 0 and
+                if (self.stress_info[i] == self.word_stress and
                     not no_stress):
                     word += '<'
                 
@@ -92,6 +92,14 @@ class Word:
 
     def __str__(self):
         return ''.join([''.join(grapheme) for grapheme in self.grapheme_symbols])
+
+    def __repr__(self) -> str:
+        grapheme = '|'.join([''.join(grapheme) for grapheme in self.grapheme_symbols])
+        phoneme = '|'.join(['.'.join(phoneme) for phoneme in self.phoneme_symbols])
+        return f'[{grapheme}/{phoneme}]'
+
+    def __len__(self):
+        return len(self.grapheme_symbols)
 
     @staticmethod
     def is_phoneme_vowel(phoneme):            

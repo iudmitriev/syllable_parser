@@ -23,8 +23,8 @@ def parse_file(filename):
         for to_replace, replacer in replace_dict.items():
             line = line.replace(to_replace, replacer)
 
-        raw_punctuation_marks = [r"\n", r" ", r",", r";", r"!", r"\?", r"-", r"—", r"―"]
-        punctuation_marks = ["\n", " ", ",", ";", "!", "?", "-", "—", "―"]
+        raw_punctuation_marks = [r"\n", r" ", r",", r";", r"!", r"\?", r"-", r"—", r"―", r"\(", r"\)", ":"]
+        punctuation_marks = ["\n", " ", ",", ";", "!", "?", "-", "—", "―", "(", ")", ":"]
         re_expression = r"(" + r"|".join(raw_punctuation_marks) + r")"
 
         line_splited = re.split(re_expression, line.strip())
