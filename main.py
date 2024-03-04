@@ -18,8 +18,6 @@ if __name__ == '__main__':
             rythm_suggestion = None
     except Exception as e:
         rythm_suggestion = None
-
-    print(parsed_aligned_text)
     
     stressed_text = stress_aligned_text(
         parsed_aligned_text, 
