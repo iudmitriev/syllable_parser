@@ -10,9 +10,6 @@ class Word:
             symbol.split(':') for symbol in phoneme_symbols
         ] 
 
-        if ''.join([''.join(grapheme) for grapheme in grapheme_symbols]) == 'God':
-            pass
-
         self.stress_info = []
         self.is_mixed = []
         self.word_stress = -1
