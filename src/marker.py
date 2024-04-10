@@ -81,6 +81,10 @@ def parse_rythmic_words(stressed_text):
                len(result) >= 2 and not '|' in [result[-1], result[-2]]:
                 result += '|'
                 promise_rythmic_end = False
+            
+            if str(word) == ' ' and promise_rythmic_end:
+                result += '|'
+                promise_rythmic_end = False
             result += str(word)
             if str(word) in punctuation_enders and wrote_something:
                 result += '|'
