@@ -20,10 +20,10 @@ You may run the application as a Flask server using server.py
 gunicorn -w 4 -b 0.0.0.0:5000 server:app
 ```
 
-Alternatively, you may use main.py file. You should paste the nessenary text in text.txt file, replace the contexts of rythm_suggestion.json with nessesary ones (examples can be seen in rythmes/ folder) and then run
+Alternatively, you may use main.py file. You should paste the necessary text in text.txt file and then run the following command with the necessary rythm suggestion
 
 ```bash
-python3 main.py
+python3 main.py --rythm=iamb
 ```
 
 The resulting text will appear in the result.txt file
