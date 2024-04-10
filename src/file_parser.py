@@ -15,12 +15,12 @@ def parse_text(text):
     with open('word_data/replacer.json', 'r') as f:
         replace_dict = json.load(f)
 
-    with open('word_data/quotation_marks_mapper.json', 'r') as f:
-        quotation_marks_mapper = json.load(f)
+    with open('word_data/symbol_mapper.json', 'r') as f:
+        symbol_mapper = json.load(f)
     parsed = []
     for line in text:
-        for quotation_mark, replacer in quotation_marks_mapper.items():
-            line = line.replace(quotation_mark, replacer)
+        for symbol, replacer in symbol_mapper.items():
+            line = line.replace(symbol, replacer)
 
         line = re.sub(r'[^\x00-\x7f]',r'', line)
 
@@ -28,13 +28,13 @@ def parse_text(text):
             line = line.replace(to_replace, replacer)
 
         raw_punctuation_marks = [r"\n", r" ", r",", r";", r"!", r"\?", r"-", 
-                                 r"—", r"―", r"\(", r"\)", r":", r'"', r"/", r"\\",
+                                 r"\(", r"\)", r":", r'"', r"/", r"\\", r"=", r"+",
                                  r"@", r"#", r"№", r"$", r"%", r"^", r"&", r"`", 
-                                 r"~", r"<", r">", r"[", r"]", r"{", r"}"]
+                                 r"~", r"<", r">", r"[", r"]", r"{", r"}", r"_"]
         punctuation_marks = ["\n", " ", ",", ";", "!", "?", "-", 
-                             "—", "―", "(", ")", ":", '"', "/", "\\",
+                             "(", ")", ":", '"', "/", "\\", "=", "+",
                              "@", "#", "№", "$", "%", "^", "&", "`", 
-                             "~", "<", ">", "[", "]", "{", "}"]
+                             "~", "<", ">", "[", "]", "{", "}", "_"]
         re_expression = r"(" + r"|".join(raw_punctuation_marks) + r")"
 
         line_splited = re.split(re_expression, line.strip())
