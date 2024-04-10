@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ - Text Processing Website</title>
+    <style>
+        /* Style for FAQ section */
+        .faq {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .faq-item {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 20px;
+        }
+        .faq-item h3 {
+            margin-top: 0;
+        }
+        .faq-item p {
+            margin-bottom: 0;
+        }
+        /* Style for responsive layout */
+        @media (max-width: 768px) {
+            .faq {
+                padding: 0 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="faq">
+        <h1>FAQ</h1>
+        <div class="faq-item">
+            <h3>Почему в тексте некоторые слова окружены знаками больше и меньше, <<<вот так>>>?</h3>
+            <p>Это слова, в которых программа не смогла проанализировать ударение. Их необходимо разметить вручную.</p>
+        </div>
+        <div class="faq-item">
+            <h3>Что означает знак ^ в тексте?</h3>
+            <p>Программа считает, что в данном месте в тексте есть гласный звук, но не смогла обнаружить соотвествующую ему гласную букву. Знак ^ выступает в качестве дополнительной гласной, отсутствующей на этом месте.</p>
+        </div>
+        <div class="faq-item">
+            <h3>С какими языками работает программа?</h3>
+            <p>Программа в настоящий момент работает только с английским языком.</p>
+        </div>
+        <div class="faq-item">
+            <h3>Программа некорректно размечает одно конкретное слово, которое часто встречается в моих текстах. Что можно сделать?</h3>
+            <p>Напишите мне, внесем слово в список исключений.</p>
+        </div>
+        <div class="faq-item">
+            <h3>Программа некорректно размечает, что делать?</h3>
+            <p>Если случай кажется простым и исправимым, напишите мне, постараюсь исправить программу, чтобы она не допускала этих ошибок</p>
+            <p> Список известных проблем: <p>
+                <ul>
+                    <li>Иногда в последних ритмических словах строчек отсутствуют ударения</li>
+                    <li>В словах, состоящих из большого числа букв и маленького числа звуков, не определяются ударения</li>
+                </ul>
+        </div>
+        <div class="faq-item">
+            <h3>Как работает эта программа?</h3>
+            <p>Примерное описание работы программы можно прочитать по <a href="https://drive.google.com/file/d/1qSFQyGs5hxIqrzxAW6r6MEPYvNeidH95/view?usp=sharing"> ссылке </a></p>
+        </div>
+        <div class="faq-item">
+            <h3>Можно ли ознакомится с кодом программы?</h3>
+            <p>Да, он выложен по <a href="https://github.com/iudmitriev/syllable_parser"> ссылке </a></p>
+        </div>
+        <div class="faq-item">
+            <h3>Как связаться с автором программы?</h3>
+            <p>Вы можете написать мне в телеграм @iudmitriev или по почте i.u.dmitriev@gmail.com, постараюсь помочь.</p>
+        </div>
+        <p><a href="/">На главную страницу</a></p>
+    </div>
+</body>
+</html>

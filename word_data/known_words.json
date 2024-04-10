@@ -1,6 +1,9 @@
 {
     "though": "th[ou]<gh",
     "thought": "th[ou]<ght",
-    "eye": "[eye]",
-    "eyes": "[eye]s"
+    "eye": "[eye]<",
+    "eyes": "[eye]<s",
+    "our": "[ou]<r",
+    "th": "th",
+    "some": "so<m-"
 }

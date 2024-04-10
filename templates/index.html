@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Разметчик текста</title>
+    <style>
+        /* Style for main content */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        /* Style for form */
+        form {
+            margin-bottom: 20px;
+        }
+        label, input, select {
+            display: block;
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+        }
+        input[type="file"] {
+            cursor: pointer;
+        }
+        /* Style for submit button */
+        input[type="submit"] {
+            width: auto;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Разметчик текста</h1>
+        <p>
+            Данный сайт позволяет автоматически разметить текст на английском языке
+            в формате, который поддерживается системой "Прозиметрон". Качество разметки
+            далеко от идеала, поэтому результаты работы программы должны вычитываться человеком.
+        </p>
+        
+        <p>
+            Краткое описание системы, контакты и ответы на ряды вопросов доступны по <a href="/explanations">ссылке</a>
+        </p>
+        <form action="/process_text" method="post" enctype="multipart/form-data">
+            <label for="option_selector">Выберете ритмическую структуру текста:</label>
+            <select id="option_selector" name="option_selector">
+                <option value="prose">Проза</option>
+                <option value="4_iamb">Четырехстопный ямб</option>
+                <option value="5_iamb">Пятистопный ямб</option>
+                <option value="trochee">Хорей</option>
+                <!-- Add more options as needed -->
+            </select><br>
+            <label for="text_input">Вставьте текст или загрузите файл в формате txt:</label><br>
+            <textarea id="text_input" name="text_input" rows="4" cols="50"></textarea><br><br>
+            <input type="file" name="file_input"><br>
+            <input type="submit" value="Разметить">
+        </form>
+
+        {% if processed_text %}
+            <h2>Размеченный текст:</h2>
+            <textarea rows="4" cols="50">{{ processed_text }}</textarea><br><br>
+        {% endif %}
+    </div>
+</body>
+</html>
