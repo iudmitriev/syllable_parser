@@ -21,12 +21,14 @@ def stress_aligned_text(parsed_aligned_text, rythm_suggestion=None):
     current_rythm_pattern = rythm_suggestion
     stress_moved = False
     for word in parsed_aligned_text:
+
         if isinstance(word, PunctuationMark):
             if str(word) == '\n':
                 current_rythm_pattern = rythm_suggestion
                 stress_moved = False
             stressed_words.append(word)
-        elif isinstance(word, str):
+        elif isinstance(word, str) or str(word) in known_words:
+            word = str(word)
             # unaligned word
             if word.lower() in known_words:
                 stressed_word = known_words[word.lower()]
@@ -72,19 +74,26 @@ def parse_rythmic_words(stressed_text):
     punctuation_enders = ['.', ',', ';', '!', '?']
     result = ''
     wrote_something = False
+    promise_rythmic_end = False
     for word in stressed_text:
         if isinstance(word, PunctuationMark):
             if str(word) == '\n' and \
                len(result) >= 2 and not '|' in [result[-1], result[-2]]:
                 result += '|'
+                promise_rythmic_end = False
             result += str(word)
             if str(word) in punctuation_enders and wrote_something:
                 result += '|'
                 wrote_something = False
+                promise_rythmic_end = False
         else:
+            if promise_rythmic_end:
+                result += '|'
+                promise_rythmic_end = False
+
             result += word
             if '<' in word:
-                result += '|'
+                promise_rythmic_end = True
                 wrote_something = False
             else:
                 wrote_something = True

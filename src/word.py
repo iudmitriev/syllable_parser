@@ -3,28 +3,42 @@ from src.letters_info import *
 class Word:
     def __init__(self, grapheme_symbols, phoneme_symbols):
         assert len(grapheme_symbols) == len(phoneme_symbols)
-
         grapheme_symbols = [
             symbol.split(':') for symbol in grapheme_symbols
         ]
         phoneme_symbols = [
             symbol.split(':') for symbol in phoneme_symbols
-        ]
+        ] 
+
+        if ''.join([''.join(grapheme) for grapheme in grapheme_symbols]) == 'God':
+            pass
+
         self.stress_info = []
+        self.is_mixed = []
+        self.word_stress = -1
         self.num_vowels = 0
         for i in range(len(grapheme_symbols)):
             stress_info = -1
+            has_consonants = False
+            has_vowels = False
             for phoneme in phoneme_symbols[i]:
                 if self.is_phoneme_vowel(phoneme):
                     stress_info = max(stress_info, int(phoneme[-1]))
+                    self.word_stress = max(self.word_stress, stress_info)
                     self.num_vowels += 1
+                    has_vowels = True
+                else:
+                    has_consonants = True
+            self.is_mixed.append(has_consonants and has_vowels)
             
             self.stress_info.append(stress_info)
         
 
         for i in range(len(grapheme_symbols)):
             stress_info = self.stress_info[i]
-            if stress_info == -1:
+            if self.is_mixed[i]:
+                banned_grapheme_list = []
+            elif stress_info == -1:
                 banned_grapheme_list = VOWELS
             else:
                 banned_grapheme_list = STRICT_CONSONANTS
@@ -44,7 +58,6 @@ class Word:
             
         self.grapheme_symbols = grapheme_symbols
         self.phoneme_symbols = phoneme_symbols
-        self.word_stress = max(self.stress_info)
     
 
     def get_processed_str(self, no_stress=False):
