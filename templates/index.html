@@ -44,15 +44,17 @@
         </p>
         
         <p>
-            Краткое описание системы, контакты и ответы на ряды вопросов доступны по <a href="/explanations">ссылке</a>
+            Краткое описание системы, контакты и ответы на ряд вопросов доступны по <a href="/explanations">ссылке</a>
         </p>
         <form action="/process_text" method="post" enctype="multipart/form-data">
-            <label for="option_selector">Выберете ритмическую структуру текста:</label>
+            <label for="option_selector">Выберите ритмическую структуру текста:</label>
             <select id="option_selector" name="option_selector">
                 <option value="prose">Проза</option>
-                <option value="4_iamb">Четырехстопный ямб</option>
-                <option value="5_iamb">Пятистопный ямб</option>
+                <option value="iamb">Ямб</option>
                 <option value="trochee">Хорей</option>
+                <option value="dactyl">Дактиль</option>
+                <option value="amphibrach">Амфибрахий</option>
+                <option value="anapaest">Анапест</option>
                 <!-- Add more options as needed -->
             </select><br>
             <label for="text_input">Вставьте текст или загрузите файл в формате txt:</label><br>
