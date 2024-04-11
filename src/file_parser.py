@@ -28,15 +28,14 @@ def parse_text(text):
             line = line.replace(to_replace, replacer)
 
         raw_punctuation_marks = [r"\n", r" ", r",", r";", r"!", r"\?", r"-", 
-                                 r"\(", r"\)", r":", r'"', r"/", r"\\", r"=", r"+",
+                                 r"\(", r"\)", r":", r'"', r"/", r"\\", r"=", r"\+",
                                  r"@", r"#", r"№", r"$", r"%", r"^", r"&", r"`", 
-                                 r"~", r"<", r">", r"[", r"]", r"{", r"}", r"_"]
+                                 r"~", r"<", r">", r"\[", r"\]", r"{", r"}", r"_"]
         punctuation_marks = ["\n", " ", ",", ";", "!", "?", "-", 
                              "(", ")", ":", '"', "/", "\\", "=", "+",
                              "@", "#", "№", "$", "%", "^", "&", "`", 
                              "~", "<", ">", "[", "]", "{", "}", "_"]
         re_expression = r"(" + r"|".join(raw_punctuation_marks) + r")"
-
         line_splited = re.split(re_expression, line.strip())
         for word in line_splited:
             if word == '':
