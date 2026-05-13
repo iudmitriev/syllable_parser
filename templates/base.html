@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru" x-data="appRoot()" x-bind:data-theme="theme" x-cloak>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Разметчик{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</head>
+<body>
+    <header class="site-header">
+        <div class="container header-inner">
+            <a href="/" class="brand">
+                <span class="brand-mark">⁄</span>
+                <span class="brand-text">Разметчик<span class="brand-sub">ритмический анализ текста</span></span>
+            </a>
+            <nav class="nav">
+                <a href="/" class="{% if active_page == 'index' %}is-active{% endif %}">Разметка</a>
+                <a href="/iamb" class="{% if active_page == 'iamb' %}is-active{% endif %}">Анализ ямба</a>
+                <a href="/explanations" class="{% if active_page == 'faq' %}is-active{% endif %}">FAQ</a>
+            </nav>
+            <button type="button" class="theme-toggle"
+                    x-on:click="toggleTheme()"
+                    x-bind:aria-label="theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'"
+                    title="Переключить тему">
+                <span x-show="theme === 'light'" aria-hidden="true">◐</span>
+                <span x-show="theme === 'dark'" aria-hidden="true">◑</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="container main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <div class="container">
+            <a href="https://github.com/iudmitriev/syllable_parser" target="_blank" rel="noopener">GitHub</a>
+            <span class="dot">·</span>
+            <a href="/explanations">FAQ</a>
+        </div>
+    </footer>
+</body>
+</html>

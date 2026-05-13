@@ -524,6 +524,7 @@ dependencies = [
     { name = "flask" },
     { name = "g2p-en" },
     { name = "gunicorn" },
+    { name = "nltk" },
 ]
 
 [package.metadata]
@@ -531,6 +532,7 @@ requires-dist = [
     { name = "flask" },
     { name = "g2p-en" },
     { name = "gunicorn" },
+    { name = "nltk" },
 ]
 
 [[package]]

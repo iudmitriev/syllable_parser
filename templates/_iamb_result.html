@@ -1,0 +1,155 @@
+<div class="result">
+    <h2>Результаты</h2>
+
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="stat-label">Ритмических слов</div>
+            <div class="stat-value">{{ result.total_words }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Пропущено фрагментов</div>
+            <div class="stat-value">{{ result.skipped_chunks }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Случайных ямбов</div>
+            <div class="stat-value">{{ result.accidental_iamb_stats.total }}</div>
+        </div>
+    </div>
+
+    <div class="cols">
+        <div>
+            <h3>Ритмический словарь</h3>
+            <div class="table-wrap">
+                <table class="data sortable">
+                    <thead>
+                        <tr>
+                            <th>Тип</th>
+                            <th>Кол-во</th>
+                            <th>Доля</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in result.rhythmic_dictionary %}
+                        <tr>
+                            <td class="mono">{{ row.syllables }}.{{ row.stress }}</td>
+                            <td>{{ row.count }}</td>
+                            <td>{{ '%.5f'|format(row.proportion) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div>
+            <h3>Профиль ударности (сильные места)</h3>
+            <div class="table-wrap">
+                <table class="data sortable">
+                    <thead>
+                        <tr>
+                            <th>Слог</th>
+                            <th>Сырая</th>
+                            <th>Нормализованная</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in result.profile %}
+                        <tr>
+                            <td class="mono">{{ row.position }}</td>
+                            <td>{{ '%.6f'|format(row.raw) }}</td>
+                            <td>{{ '%.5f'|format(row.normalized) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <h3>Случайные ямбы в тексте</h3>
+    {% if result.accidental_iambs %}
+        <div class="cols">
+            <div>
+                <h4>По длине</h4>
+                <div class="table-wrap">
+                    <table class="data sortable">
+                        <thead>
+                            <tr>
+                                <th>Слогов</th>
+                                <th>Кол-во</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in result.accidental_iamb_stats.by_syllables %}
+                            <tr>
+                                <td class="mono">{{ row.syllables }}</td>
+                                <td>{{ row.count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div>
+                <h4>По схеме</h4>
+                <div class="table-wrap">
+                    <table class="data sortable">
+                        <thead>
+                            <tr>
+                                <th>Схема</th>
+                                <th>Кол-во</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in result.accidental_iamb_stats.by_pattern %}
+                            <tr>
+                                <td class="pattern">{{ row.pattern }}</td>
+                                <td>{{ row.count }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <details style="margin-top: var(--space-4)"
+                 x-data="markedTextController($el.querySelector('pre.iamb-list').textContent, 'accidental_iambs.txt')"
+                 x-init="init()">
+            <summary class="muted" style="cursor:pointer">Показать список ({{ result.accidental_iambs|length }})</summary>
+            <div class="result-header" style="margin-top: var(--space-3); margin-bottom: var(--space-2)">
+                <span class="muted" style="font-size: 0.85rem">Одна строка — один ямб</span>
+                <div class="btn-row">
+                    <button type="button" class="btn btn-ghost" x-on:click="copy()" title="Скопировать список">⧉ Копировать</button>
+                    <button type="button" class="btn btn-ghost" x-on:click="download()" title="Скачать .txt">↓ Скачать</button>
+                </div>
+            </div>
+            <pre class="iamb-list">{% for iamb in result.accidental_iambs %}{{ iamb.text }}
+{% endfor %}</pre>
+        </details>
+    {% else %}
+        <p class="muted">Не найдено.</p>
+    {% endif %}
+
+    <h3>Вероятности ямбических комбинаций</h3>
+    <div class="table-wrap">
+        <table class="data sortable">
+            <thead>
+                <tr>
+                    <th>Схема</th>
+                    <th>Вероятность</th>
+                    <th>Нормализованная</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in result.patterns %}
+                <tr>
+                    <td class="pattern">{{ row.pattern }}</td>
+                    <td>{{ '%.6f'|format(row.probability) }}</td>
+                    <td>{{ '%.5f'|format(row.normalized) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

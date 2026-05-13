@@ -1,84 +1,90 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FAQ - Text Processing Website</title>
-    <style>
-        /* Style for FAQ section */
-        .faq {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        .faq-item {
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 20px;
-        }
-        .faq-item h3 {
-            margin-top: 0;
-        }
-        .faq-item p {
-            margin-bottom: 0;
-        }
-        /* Style for responsive layout */
-        @media (max-width: 768px) {
-            .faq {
-                padding: 0 20px;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="faq">
-        <h1>FAQ</h1>
-        <div class="faq-item">
-            <h3>Почему в тексте некоторые слова окружены знаками больше и меньше, <<<вот так>>>?</h3>
+{% extends 'base.html' %}
+{% set active_page = 'faq' %}
+{% block title %}FAQ{% endblock %}
+
+{% block content %}
+<h1>FAQ</h1>
+<p class="muted">
+    Краткие ответы на распространённые вопросы. Если ваш вопрос здесь не освещён —
+    напишите автору в Telegram <a href="https://t.me/iudmitriev" target="_blank" rel="noopener">@iudmitriev</a>
+    или на почту <a href="mailto:i.u.dmitriev@gmail.com">i.u.dmitriev@gmail.com</a>.
+</p>
+
+<div class="accordion">
+    <details>
+        <summary>Почему в тексте некоторые слова окружены знаками больше и меньше, <code>&lt;&lt;&lt;вот так&gt;&gt;&gt;</code>?</summary>
+        <div class="answer">
             <p>Это слова, в которых программа не смогла проанализировать ударение. Их необходимо разметить вручную.</p>
         </div>
-        <div class="faq-item">
-            <h3>Что означает знак ^ в тексте?</h3>
-            <p>Программа считает, что в данном месте в тексте есть гласный звук, но не смогла обнаружить соотвествующую ему гласную букву. Знак ^ выступает в качестве дополнительной гласной, отсутствующей на этом месте.</p>
+    </details>
+
+    <details>
+        <summary>Что означает знак <code>^</code> в тексте?</summary>
+        <div class="answer">
+            <p>Программа считает, что в данном месте в тексте есть гласный звук, но не смогла обнаружить соответствующую ему гласную букву. Знак <code>^</code> выступает в качестве дополнительной гласной, отсутствующей на этом месте.</p>
         </div>
-        <div class="faq-item">
-            <h3>После разметки из текста пропали символы, с чем это связано?</h3>
-            <p>В силу технических причин все символы, кроме стандартных латинских, а так же символ | и символ * удаляются из текста. 
-                При этом кавычки, отличные от ", например, «ёлочки», заменяются на стандартные английские. </p>
+    </details>
+
+    <details>
+        <summary>После разметки из текста пропали символы, с чем это связано?</summary>
+        <div class="answer">
+            <p>В силу технических причин все символы, кроме стандартных латинских, а также символов <code>|</code> и <code>*</code> удаляются из текста.
+                При этом кавычки, отличные от <code>"</code>, например, «ёлочки», заменяются на стандартные английские.</p>
         </div>
-        <div class="faq-item">
-            <h3>Можно ли сделать окно с текстом побольше?</h3>
-            <p>Зажав правый нижный угол окна с текстом, вы можете изменять его размер.</p>
+    </details>
+
+    <details>
+        <summary>Можно ли сделать окно с текстом побольше?</summary>
+        <div class="answer">
+            <p>Зажав правый нижний угол окна с текстом, вы можете изменять его размер.</p>
         </div>
-        <div class="faq-item">
-            <h3>С какими языками работает программа?</h3>
+    </details>
+
+    <details>
+        <summary>С какими языками работает программа?</summary>
+        <div class="answer">
             <p>Программа в настоящий момент работает только с английским языком.</p>
         </div>
-        <div class="faq-item">
-            <h3>Программа некорректно размечает одно конкретное слово, которое часто встречается в моих текстах. Что можно сделать?</h3>
-            <p>Напишите мне, внесем слово в список исключений.</p>
+    </details>
+
+    <details>
+        <summary>Программа некорректно размечает одно конкретное слово, часто встречающееся в моих текстах. Что можно сделать?</summary>
+        <div class="answer">
+            <p>Напишите автору — внесём слово в список исключений.</p>
         </div>
-        <div class="faq-item">
-            <h3>Программа некорректно размечает, что делать?</h3>
-            <p>Если случай кажется простым и исправимым, напишите мне, постараюсь исправить программу, чтобы она не допускала этих ошибок</p>
-            <p> Список известных проблем: <p>
-                <ul>
-                    <li>Иногда в последних ритмических словах строчек отсутствуют ударения</li>
-                    <li>В словах, состоящих из большого числа букв и маленького числа звуков, не определяются ударения</li>
-                </ul>
+    </details>
+
+    <details>
+        <summary>Программа некорректно размечает, что делать?</summary>
+        <div class="answer">
+            <p>Если случай кажется простым и исправимым, напишите автору, постараемся исправить программу, чтобы она не допускала этих ошибок.</p>
+            <p>Список известных проблем:</p>
+            <ul>
+                <li>Иногда в последних ритмических словах строчек отсутствуют ударения</li>
+                <li>В словах, состоящих из большого числа букв и маленького числа звуков, не определяются ударения</li>
+            </ul>
         </div>
-        <div class="faq-item">
-            <h3>Как работает эта программа?</h3>
-            <p>Примерное описание работы программы можно прочитать по <a href="https://drive.google.com/file/d/1qSFQyGs5hxIqrzxAW6r6MEPYvNeidH95/view?usp=sharing"> ссылке </a></p>
+    </details>
+
+    <details>
+        <summary>Как работает эта программа?</summary>
+        <div class="answer">
+            <p>Примерное описание работы программы можно прочитать по <a href="https://drive.google.com/file/d/1qSFQyGs5hxIqrzxAW6r6MEPYvNeidH95/view?usp=sharing" target="_blank" rel="noopener">ссылке</a>.</p>
         </div>
-        <div class="faq-item">
-            <h3>Можно ли ознакомится с кодом программы?</h3>
-            <p>Да, он выложен по <a href="https://github.com/iudmitriev/syllable_parser"> ссылке </a></p>
+    </details>
+
+    <details>
+        <summary>Можно ли ознакомиться с кодом программы?</summary>
+        <div class="answer">
+            <p>Да, он выложен на <a href="https://github.com/iudmitriev/syllable_parser" target="_blank" rel="noopener">GitHub</a>.</p>
         </div>
-        <div class="faq-item">
-            <h3>Как связаться с автором программы?</h3>
-            <p>Вы можете написать мне в телеграм @iudmitriev или по почте i.u.dmitriev@gmail.com, постараюсь помочь.</p>
+    </details>
+
+    <details>
+        <summary>Как связаться с автором программы?</summary>
+        <div class="answer">
+            <p>Можно написать в Telegram <a href="https://t.me/iudmitriev" target="_blank" rel="noopener">@iudmitriev</a> или на почту <a href="mailto:i.u.dmitriev@gmail.com">i.u.dmitriev@gmail.com</a>.</p>
         </div>
-        <p><a href="/">На главную страницу</a></p>
-    </div>
-</body>
-</html>
+    </details>
+</div>
+{% endblock %}

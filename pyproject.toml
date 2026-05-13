@@ -9,6 +9,7 @@ dependencies = [
     "g2p-en",
     "flask",
     "gunicorn",
+    "nltk",
 ]
 
 [tool.uv]
