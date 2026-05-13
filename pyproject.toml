@@ -1,0 +1,15 @@
+[project]
+name = "syllable-parser"
+version = "0.1.0"
+description = "Automatic rythmic text marker for the \"Прозиметрон\" system"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { file = "LICENSE.md" }
+dependencies = [
+    "g2p-en",
+    "flask",
+    "gunicorn",
+]
+
+[tool.uv]
+package = false
