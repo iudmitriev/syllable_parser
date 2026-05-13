@@ -21,19 +21,17 @@ make setup
 
 ### Running
 
-Production server (gunicorn):
+Production server (gunicorn, daemonized on port 80):
 
 ```bash
 make run
 ```
 
-Development server (Flask debug mode):
+Development server (Flask debug mode on port 5000):
 
 ```bash
 make dev
 ```
-
-Both serve on `http://0.0.0.0:5000`.
 
 ### CLI usage
 

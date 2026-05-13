@@ -9,7 +9,7 @@ NLTK_PACKAGES := averaged_perceptron_tagger_eng averaged_perceptron_tagger cmudi
 help:
 	@echo "Available targets:"
 	@echo "  setup  - Install everything: m2m-aligner, Python deps, NLTK data"
-	@echo "  run    - Start the production server (gunicorn on :5000)"
+	@echo "  run    - Start the production server (gunicorn on :80, daemon)"
 	@echo "  dev    - Start the Flask dev server (debug mode on :5000)"
 	@echo "  clean  - Remove m2m-aligner clone and Python caches"
 
@@ -34,7 +34,7 @@ nltk-data: python-deps
 	@uv run python -c "import nltk; [nltk.download(p, quiet=True) for p in '$(NLTK_PACKAGES)'.split()]"
 
 run:
-	uv run gunicorn -w 4 -b 0.0.0.0:5000 server:app
+	uv run gunicorn -w 4 -b 0.0.0.0:80 server:app --daemon
 
 dev:
 	uv run python server.py
