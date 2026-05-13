@@ -1,198 +1,83 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ритмический анализ прозы (ямб)</title>
-    <style>
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        form { margin-bottom: 20px; }
-        label, input, select { display: block; width: 100%; margin-bottom: 10px; }
-        textarea { width: 100%; height: 200px; font-family: monospace; }
-        input[type="file"] { cursor: pointer; }
-        input[type="submit"] { width: auto; cursor: pointer; }
-        table {
-            border-collapse: collapse;
-            margin-top: 10px;
-            margin-bottom: 30px;
-        }
-        th, td {
-            border: 1px solid #aaa;
-            padding: 4px 10px;
-            text-align: right;
-        }
-        th:first-child, td:first-child { text-align: left; }
-        .pattern {
-            font-family: monospace;
-            font-size: 1.1em;
-        }
-        .columns {
-            display: flex;
-            gap: 30px;
-            flex-wrap: wrap;
-        }
-        .columns > div { flex: 1; min-width: 300px; }
-        nav { margin-bottom: 20px; }
-        nav a { margin-right: 12px; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <nav>
-            <a href="/">На главную</a>
-            <a href="/explanations">FAQ</a>
-        </nav>
-        <h1>Ритмический анализ прозы (ямб)</h1>
+{% extends 'base.html' %}
+{% set active_page = 'iamb' %}
+{% block title %}Ритмический анализ (ямб){% endblock %}
 
-        <form action="/iamb" method="post" enctype="multipart/form-data">
-            <label for="text_input">Вставьте размеченный текст или загрузите файл:</label>
-            <textarea id="text_input" name="text_input" rows="10">{{ submitted_text or '' }}</textarea>
-            <input type="file" name="file_input">
-            <label for="feminine_weight">
-                Вес женских окончаний (9-сложных строк), от 0 до 1:
+{% block content %}
+<h1>Ритмический анализ прозы (ямб)</h1>
+<p class="muted">
+    Анализ уже размеченной прозы: ритмический словарь, профиль ударности и вероятности
+    ямбических комбинаций. Подайте на вход результат разметки с
+    <a href="/">главной страницы</a> или собственный файл в том же формате.
+</p>
+
+<form class="card"
+      hx-post="/iamb"
+      hx-target="#iamb-result"
+      hx-swap="innerHTML"
+      hx-encoding="multipart/form-data"
+      hx-indicator="#iamb-indicator">
+    <div class="form-grid">
+        <div>
+            <label class="field-label" for="text_input">Размеченный текст</label>
+            <textarea id="text_input" name="text_input"
+                      placeholder="Вставьте размеченный текст или загрузите файл...">{{ submitted_text or '' }}</textarea>
+        </div>
+
+        <div x-data="fileDrop()">
+            <label class="field-label">Или файл</label>
+            <label class="file-drop"
+                   x-bind:class="{ 'is-dragover': dragover }"
+                   x-on:dragover.prevent="dragover = true"
+                   x-on:dragleave.prevent="dragover = false"
+                   x-on:drop.prevent="onDrop($event)">
+                <input type="file" name="file_input" accept=".txt,text/plain"
+                       x-ref="input" x-on:change="pick($event)">
+                <template x-if="!fileName">
+                    <span>
+                        <strong>Перетащите файл</strong> или нажмите для выбора
+                        <span class="file-hint" style="display:block">формат .txt</span>
+                    </span>
+                </template>
+                <template x-if="fileName">
+                    <span>
+                        <span class="file-name" x-text="fileName"></span>
+                        <button type="button" class="btn-ghost btn" style="margin-top:8px; padding:4px 10px; font-size:0.8rem"
+                                x-on:click="clear($event)">убрать</button>
+                    </span>
+                </template>
             </label>
-            <input type="number" id="feminine_weight" name="feminine_weight"
-                   min="0" max="1" step="0.01"
-                   value="{{ '%.2f'|format(feminine_weight) }}"
-                   style="width: 120px;">
-            <label for="variant">Определение ямба:</label>
-            <select id="variant" name="variant" style="width: auto;">
-                <option value="0" {% if variant == 0 %}selected{% endif %}>0 — как 1, но 8-й слог обязательно ударный</option>
-                <option value="1" {% if variant == 1 %}selected{% endif %}>1 — только ударения на сильных местах (-/-/-/-/)</option>
-                <option value="2" {% if variant == 2 %}selected{% endif %}>2 — + ударение на слабом перед ударным сильным</option>
-                <option value="3" {% if variant == 3 %}selected{% endif %}>3 — + сдвиг первой стопы (/--/-/-/)</option>
-            </select>
-            <input type="submit" value="Проанализировать">
-        </form>
+        </div>
 
-        {% if result %}
-            <h2>Результаты</h2>
-            <p>Всего распознано ритмических слов: <b>{{ result.total_words }}</b>
-               (пропущено фрагментов без ровно одного ударения: {{ result.skipped_chunks }}).</p>
-
-            <div class="columns">
-                <div>
-                    <h3>Ритмический словарь</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Тип</th>
-                                <th>Кол-во</th>
-                                <th>Доля</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in result.rhythmic_dictionary %}
-                            <tr>
-                                <td>{{ row.syllables }}.{{ row.stress }}</td>
-                                <td>{{ row.count }}</td>
-                                <td>{{ '%.5f'|format(row.proportion) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-
-                <div>
-                    <h3>Профиль ударности (сильные места)</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Слог</th>
-                                <th>Сырая вероятность</th>
-                                <th>Нормализованная</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for row in result.profile %}
-                            <tr>
-                                <td>{{ row.position }}</td>
-                                <td>{{ '%.6f'|format(row.raw) }}</td>
-                                <td>{{ '%.5f'|format(row.normalized) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+        <div class="field-row">
+            <div class="field">
+                <label class="field-label" for="feminine_weight">
+                    Вес женских окончаний (9-сложных строк), 0–1
+                </label>
+                <input type="number" id="feminine_weight" name="feminine_weight"
+                       min="0" max="1" step="0.01"
+                       value="{{ '%.2f'|format(feminine_weight) }}">
             </div>
+            <div class="field">
+                <label class="field-label" for="variant">Определение ямба</label>
+                <select id="variant" name="variant">
+                    <option value="0" {% if variant == 0 %}selected{% endif %}>0 — как 1, но 8-й слог обязательно ударный</option>
+                    <option value="1" {% if variant == 1 %}selected{% endif %}>1 — только ударения на сильных местах (-/-/-/-/)</option>
+                    <option value="2" {% if variant == 2 %}selected{% endif %}>2 — + ударение на слабом перед ударным сильным</option>
+                    <option value="3" {% if variant == 3 %}selected{% endif %}>3 — + сдвиг первой стопы (/--/-/-/)</option>
+                </select>
+            </div>
+        </div>
 
-            <h3>Случайные ямбы в тексте
-                ({{ result.accidental_iamb_stats.total }})</h3>
-            {% if result.accidental_iambs %}
-                <div class="columns">
-                    <div>
-                        <h4>По длине</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Слогов</th>
-                                    <th>Кол-во</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in result.accidental_iamb_stats.by_syllables %}
-                                <tr>
-                                    <td>{{ row.syllables }}</td>
-                                    <td>{{ row.count }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div>
-                        <h4>По схеме</h4>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Схема</th>
-                                    <th>Кол-во</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for row in result.accidental_iamb_stats.by_pattern %}
-                                <tr>
-                                    <td class="pattern">{{ row.pattern }}</td>
-                                    <td>{{ row.count }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <h4>Список</h4>
-                <ol>
-                    {% for iamb in result.accidental_iambs %}
-                    <li>{{ iamb.text }}</li>
-                    {% endfor %}
-                </ol>
-            {% else %}
-                <p>Не найдено.</p>
-            {% endif %}
-
-            <h3>Вероятности ямбических комбинаций</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Схема</th>
-                        <th>Вероятность</th>
-                        <th>Нормализованная</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row in result.patterns %}
-                    <tr>
-                        <td class="pattern">{{ row.pattern }}</td>
-                        <td>{{ '%.6f'|format(row.probability) }}</td>
-                        <td>{{ '%.5f'|format(row.normalized) }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        {% endif %}
+        <div class="btn-row">
+            <button class="btn" type="submit">Проанализировать</button>
+            <span id="iamb-indicator" class="htmx-indicator"><span class="spinner"></span> Анализируем…</span>
+        </div>
     </div>
-</body>
-</html>
+</form>
+
+<div id="iamb-result">
+    {% if result %}
+        {% include '_iamb_result.html' %}
+    {% endif %}
+</div>
+{% endblock %}

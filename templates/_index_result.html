@@ -1,0 +1,23 @@
+<div class="result"
+     x-data="markedTextController($el.querySelector('textarea[data-raw]').value, 'marked_text.txt')"
+     x-init="init()">
+    <div class="result-header">
+        <h2 style="margin:0">Размеченный текст</h2>
+        <div class="btn-row">
+            <button type="button" class="btn btn-ghost" x-on:click="copy()" title="Скопировать в буфер">⧉ Копировать</button>
+            <button type="button" class="btn btn-ghost" x-on:click="download()" title="Скачать .txt">↓ Скачать</button>
+        </div>
+    </div>
+
+    <pre class="marked-text" x-html="rendered"></pre>
+
+    <textarea data-raw hidden readonly>{{ processed_text }}</textarea>
+
+    <div class="legend">
+        <span class="legend-item"><span class="legend-swatch stress">&lt;</span> ударение</span>
+        <span class="legend-item"><span class="legend-swatch boundary">|</span> граница</span>
+        <span class="legend-item"><span class="legend-swatch phantom">^</span> фантомный гласный</span>
+        <span class="legend-item"><span class="legend-swatch bracket">[ae]</span> диграф</span>
+        <span class="legend-item"><span class="legend-swatch unknown">&lt;&lt;&lt;…&gt;&gt;&gt;</span> не разобрано</span>
+    </div>
+</div>

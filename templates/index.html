@@ -1,56 +1,25 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Разметчик текста</title>
-    <style>
-        /* Style for main content */
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 0 20px;
-        }
-        /* Style for form */
-        form {
-            margin-bottom: 20px;
-        }
-        label, input, select {
-            display: block;
-            width: 100%;
-            margin-bottom: 10px;
-        }
-        textarea {
-            width: 100%;
-            height: 100px;
-        }
-        input[type="file"] {
-            cursor: pointer;
-        }
-        /* Style for submit button */
-        input[type="submit"] {
-            width: auto;
-            cursor: pointer;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>Разметчик текста</h1>
-        <p>
-            Данный сайт позволяет автоматически разметить текст на английском языке
-            в формате, который поддерживается системой "Прозиметрон". Качество разметки
-            далеко от идеала, поэтому результаты работы программы должны вычитываться человеком.
-        </p>
-        
-        <p>
-            Краткое описание системы, контакты и ответы на ряд вопросов доступны по <a href="/explanations">ссылке</a>
-        </p>
-        <p>
-            Ритмический анализ уже размеченной прозы (ритмический словарь и вероятности ямбических комбинаций) доступен на <a href="/iamb">отдельной странице</a>.
-        </p>
-        <form action="/process_text" method="post" enctype="multipart/form-data">
-            <label for="option_selector">Выберите ритмическую структуру текста:</label>
+{% extends 'base.html' %}
+{% set active_page = 'index' %}
+{% block title %}Разметчик текста{% endblock %}
+
+{% block content %}
+<h1>Автоматическая разметка текста</h1>
+<p class="muted">
+    Сайт автоматически размечает английский текст в формате системы «Прозиметрон».
+    Качество разметки далеко от идеала — результат должен вычитываться человеком.
+    Описание системы и ответы на вопросы — в <a href="/explanations">FAQ</a>.
+    Ритмический анализ уже размеченной прозы — на <a href="/iamb">отдельной странице</a>.
+</p>
+
+<form class="card"
+      hx-post="/process_text"
+      hx-target="#result"
+      hx-swap="innerHTML"
+      hx-encoding="multipart/form-data"
+      hx-indicator="#submit-indicator">
+    <div class="form-grid">
+        <div>
+            <label class="field-label" for="option_selector">Ритмическая структура</label>
             <select id="option_selector" name="option_selector">
                 <option value="prose">Проза</option>
                 <option value="iamb">Ямб</option>
@@ -58,18 +27,49 @@
                 <option value="dactyl">Дактиль</option>
                 <option value="amphibrach">Амфибрахий</option>
                 <option value="anapaest">Анапест</option>
-                <!-- Add more options as needed -->
-            </select><br>
-            <label for="text_input">Вставьте текст или загрузите файл в формате txt:</label><br>
-            <textarea id="text_input" name="text_input" rows="4" cols="50"></textarea><br><br>
-            <input type="file" name="file_input"><br>
-            <input type="submit" value="Разметить">
-        </form>
+            </select>
+        </div>
 
-        {% if processed_text %}
-            <h2>Размеченный текст:</h2>
-            <textarea rows="4" cols="50">{{ processed_text }}</textarea><br><br>
-        {% endif %}
+        <div>
+            <label class="field-label" for="text_input">Текст</label>
+            <textarea id="text_input" name="text_input" placeholder="Вставьте сюда текст на английском..."></textarea>
+        </div>
+
+        <div x-data="fileDrop()">
+            <label class="field-label">Или файл .txt</label>
+            <label class="file-drop"
+                   x-bind:class="{ 'is-dragover': dragover }"
+                   x-on:dragover.prevent="dragover = true"
+                   x-on:dragleave.prevent="dragover = false"
+                   x-on:drop.prevent="onDrop($event)">
+                <input type="file" name="file_input" accept=".txt,text/plain"
+                       x-ref="input" x-on:change="pick($event)">
+                <template x-if="!fileName">
+                    <span>
+                        <strong>Перетащите файл</strong> или нажмите для выбора
+                        <span class="file-hint" style="display:block">формат .txt</span>
+                    </span>
+                </template>
+                <template x-if="fileName">
+                    <span>
+                        <span class="file-name" x-text="fileName"></span>
+                        <button type="button" class="btn-ghost btn" style="margin-top:8px; padding:4px 10px; font-size:0.8rem"
+                                x-on:click="clear($event)">убрать</button>
+                    </span>
+                </template>
+            </label>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn" type="submit">Разметить текст</button>
+            <span id="submit-indicator" class="htmx-indicator"><span class="spinner"></span> Размечаем…</span>
+        </div>
     </div>
-</body>
-</html>
+</form>
+
+<div id="result">
+    {% if processed_text is defined and processed_text %}
+        {% include '_index_result.html' %}
+    {% endif %}
+</div>
+{% endblock %}
