@@ -1,0 +1,386 @@
+from collections import defaultdict
+from itertools import product
+
+VOWEL_LETTERS = set('aeiouy')
+PHANTOM = '^'
+STRESS_MARK = '<'
+
+STRONG_POSITIONS = (2, 4, 6, 8)
+SHIFTED_STRONG_POSITIONS = (1, 4, 6, 8)
+
+IAMB_VARIANTS = (0, 1, 2, 3)
+
+
+def parse_rhythmic_word(rword):
+    """Parse a single rhythmic word string.
+
+    Returns (num_syllables, stress_position_1based) or None if the word has
+    no syllables or does not have exactly one stress.
+    """
+    syllables_stress = []
+    i = 0
+    n = len(rword)
+    while i < n:
+        c = rword[i]
+        if c == '[':
+            end = rword.find(']', i)
+            if end == -1:
+                i += 1
+                continue
+            i = end + 1
+            stressed = i < n and rword[i] == STRESS_MARK
+            if stressed:
+                i += 1
+            syllables_stress.append(stressed)
+        elif c == PHANTOM or c.lower() in VOWEL_LETTERS:
+            i += 1
+            stressed = i < n and rword[i] == STRESS_MARK
+            if stressed:
+                i += 1
+            syllables_stress.append(stressed)
+        else:
+            i += 1
+
+    if not syllables_stress:
+        return None
+    stress_positions = [idx + 1 for idx, s in enumerate(syllables_stress) if s]
+    if len(stress_positions) != 1:
+        return None
+    return (len(syllables_stress), stress_positions[0])
+
+
+def split_into_rhythmic_words(text):
+    """Split marked-up text into rhythmic word strings.
+
+    Both `|` and newlines act as boundaries.
+    """
+    rwords = []
+    for line in text.split('\n'):
+        for chunk in line.split('|'):
+            chunk = chunk.strip()
+            if chunk:
+                rwords.append(chunk)
+    return rwords
+
+
+def compute_rhythmic_dictionary(text):
+    """Returns counts, proportions, total count, and skipped count."""
+    counts = defaultdict(int)
+    total_chunks = 0
+    skipped = 0
+    for chunk in split_into_rhythmic_words(text):
+        total_chunks += 1
+        parsed = parse_rhythmic_word(chunk)
+        if parsed is None:
+            skipped += 1
+            continue
+        counts[parsed] += 1
+    total = sum(counts.values())
+    proportions = {k: v / total for k, v in counts.items()} if total > 0 else {}
+    return counts, proportions, total, skipped
+
+
+def _pattern_string(stressed_set, total_syllables):
+    """Render the stress pattern as a visual string of '-' and '/'."""
+    chars = []
+    for pos in range(1, total_syllables + 1):
+        if pos in stressed_set:
+            chars.append('/')
+        else:
+            chars.append('-')
+    return ''.join(chars)
+
+
+def _enumerate_for_template(proportions, template, total_syllables, weight,
+                            allow_preceding_weak, required_positions,
+                            pattern_probs):
+    template_set = set(template)
+    n = len(template)
+    for mask in range(1, 1 << n):
+        stressed_strong = [template[i] for i in range(n) if mask & (1 << i)]
+        if not required_positions.issubset(stressed_strong):
+            continue
+
+        if allow_preceding_weak:
+            candidate_weaks = [s - 1 for s in stressed_strong
+                               if s - 1 >= 1 and (s - 1) not in template_set]
+            weak_mask_range = range(1 << len(candidate_weaks))
+        else:
+            candidate_weaks = []
+            weak_mask_range = [0]
+
+        for wmask in weak_mask_range:
+            stressed_weak = [candidate_weaks[i]
+                             for i in range(len(candidate_weaks))
+                             if wmask & (1 << i)]
+            all_stressed = sorted(set(stressed_strong) | set(stressed_weak))
+            m = len(all_stressed)
+
+            ranges = []
+            for i in range(m - 1):
+                ranges.append(range(all_stressed[i], all_stressed[i + 1]))
+
+            for inner in product(*ranges):
+                bounds = [0] + list(inner) + [total_syllables]
+                if bounds[-1] < all_stressed[-1]:
+                    continue
+                prob = 1.0
+                ok = True
+                for i in range(m):
+                    n_syl = bounds[i + 1] - bounds[i]
+                    s_pos = all_stressed[i] - bounds[i]
+                    if n_syl <= 0 or s_pos <= 0 or s_pos > n_syl:
+                        ok = False
+                        break
+                    key = (n_syl, s_pos)
+                    p = proportions.get(key, 0.0)
+                    if p == 0.0:
+                        ok = False
+                        break
+                    prob *= p
+                if ok and prob > 0:
+                    pattern = _pattern_string(set(all_stressed), total_syllables)
+                    pattern_probs[pattern] += prob * weight
+
+
+def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1):
+    """For each iamb stress pattern, sum the products of word proportions
+    over all word-sequence combinations that realize that pattern.
+
+    Patterns include both masculine (8 syllables) and feminine (9 syllables)
+    endings. Feminine-ending pattern probabilities are multiplied by
+    `feminine_weight` (a value in [0, 1]).
+
+    The `variant` parameter controls what counts as an iamb:
+      0: like variant 1, but the 8th syllable must be stressed.
+      1: only stresses on strong positions (2, 4, 6, 8).
+      2: variant 1, plus stresses on a weak position immediately preceding
+         a stressed strong position.
+      3: variant 2, plus lines with a shifted first foot
+         (strong positions 1, 4, 6, 8 — pattern /--/-/-/...).
+    """
+    if variant not in IAMB_VARIANTS:
+        variant = 1
+
+    pattern_probs = defaultdict(float)
+
+    if variant == 0:
+        # Variant 0: regular template, no weak stresses, position 8 required.
+        templates = [(STRONG_POSITIONS, False, {8})]
+    else:
+        # Regular iamb template. In variant 2+, weak-position stresses are
+        # also allowed immediately before a stressed strong position.
+        templates = [(STRONG_POSITIONS, variant >= 2, set())]
+        # Variant 3 additionally enumerates lines whose first foot is shifted
+        # — strong position at 1 instead of 2. Requiring position 1 in the
+        # stressed strong set ensures we don't double-count patterns that
+        # would otherwise be reachable from the regular template.
+        if variant >= 3:
+            templates.append((SHIFTED_STRONG_POSITIONS, True, {1}))
+
+    for template, allow_weak, required in templates:
+        for total_syllables in (8, 9):
+            weight = 1.0 if total_syllables == 8 else feminine_weight
+            if weight == 0.0:
+                continue
+            _enumerate_for_template(
+                proportions, template, total_syllables, weight,
+                allow_preceding_weak=allow_weak,
+                required_positions=required,
+                pattern_probs=pattern_probs,
+            )
+
+    return dict(pattern_probs)
+
+
+def _stresses_match_template(stresses, template, allow_preceding_weak, required):
+    template_set = set(template)
+    if not required.issubset(stresses):
+        return False
+    strong = stresses & template_set
+    weak = stresses - template_set
+    if not strong:
+        return False
+    if weak and not allow_preceding_weak:
+        return False
+    for w in weak:
+        if (w + 1) not in template_set:
+            return False
+        if (w + 1) not in strong:
+            return False
+    return True
+
+
+def _is_valid_iamb_pattern(stresses, total_syllables, variant):
+    if total_syllables not in (8, 9):
+        return False
+    if not stresses:
+        return False
+    if total_syllables == 9 and 9 in stresses:
+        return False
+
+    if variant == 0:
+        return _stresses_match_template(
+            stresses, STRONG_POSITIONS,
+            allow_preceding_weak=False, required={8},
+        )
+    if _stresses_match_template(
+        stresses, STRONG_POSITIONS,
+        allow_preceding_weak=variant >= 2, required=set(),
+    ):
+        return True
+    if variant >= 3 and _stresses_match_template(
+        stresses, SHIFTED_STRONG_POSITIONS,
+        allow_preceding_weak=True, required={1},
+    ):
+        return True
+    return False
+
+
+def find_accidental_iambs(text, feminine_weight=1.0, variant=1):
+    """Find every contiguous run of rhythmic words in `text` whose total
+    syllable count is 8 or 9 and whose stress positions form a valid iamb
+    under the chosen variant.
+
+    Chunks that fail to parse (section headers like "(I)", multi-stress
+    chunks, punctuation-only chunks) break the run — an accidental iamb
+    cannot span them.
+    """
+    feminine_weight = max(0.0, min(1.0, float(feminine_weight)))
+    try:
+        variant = int(variant)
+    except (TypeError, ValueError):
+        variant = 1
+    if variant not in IAMB_VARIANTS:
+        variant = 1
+
+    chunks = []
+    for chunk in split_into_rhythmic_words(text):
+        chunks.append((parse_rhythmic_word(chunk), chunk))
+
+    allowed_lengths = (8, 9) if feminine_weight > 0 else (8,)
+    max_len = max(allowed_lengths)
+
+    iambs = []
+    n = len(chunks)
+    for start in range(n):
+        if chunks[start][0] is None:
+            continue
+        total = 0
+        stresses = set()
+        for end in range(start, n):
+            parsed, _ = chunks[end]
+            if parsed is None:
+                break
+            n_syl, s_pos = parsed
+            total += n_syl
+            stresses.add(total - n_syl + s_pos)
+            if total > max_len:
+                break
+            if total in allowed_lengths and _is_valid_iamb_pattern(
+                stresses, total, variant,
+            ):
+                snippet = ' | '.join(c for _, c in chunks[start:end + 1])
+                iambs.append({
+                    'text': snippet,
+                    'pattern': _pattern_string(stresses, total),
+                    'syllables': total,
+                })
+
+    return iambs
+
+
+def compute_stress_profile(pattern_probs):
+    """For each strong position, compute the total probability mass of
+    patterns that have a stress at that position. Also returns the
+    normalized probability (conditional on producing an iambic line).
+    """
+    raw = {p: 0.0 for p in STRONG_POSITIONS}
+    total = sum(pattern_probs.values())
+    for pattern, prob in pattern_probs.items():
+        for pos in STRONG_POSITIONS:
+            if pos - 1 < len(pattern) and pattern[pos - 1] == '/':
+                raw[pos] += prob
+    if total > 0:
+        normalized = {p: raw[p] / total for p in STRONG_POSITIONS}
+    else:
+        normalized = {p: 0.0 for p in STRONG_POSITIONS}
+    return raw, normalized, total
+
+
+def analyze_iamb(text, feminine_weight=1.0, variant=1):
+    feminine_weight = max(0.0, min(1.0, float(feminine_weight)))
+    try:
+        variant = int(variant)
+    except (TypeError, ValueError):
+        variant = 1
+    if variant not in IAMB_VARIANTS:
+        variant = 1
+    counts, proportions, total, skipped = compute_rhythmic_dictionary(text)
+    pattern_probs = enumerate_iamb_patterns(
+        proportions, feminine_weight=feminine_weight, variant=variant,
+    )
+    raw_profile, normalized_profile, total_pattern_prob = compute_stress_profile(pattern_probs)
+    accidental_iambs = find_accidental_iambs(
+        text, feminine_weight=feminine_weight, variant=variant,
+    )
+    pattern_counts = defaultdict(int)
+    syllable_counts = defaultdict(int)
+    for iamb in accidental_iambs:
+        pattern_counts[iamb['pattern']] += 1
+        syllable_counts[iamb['syllables']] += 1
+    accidental_iamb_stats = {
+        'total': len(accidental_iambs),
+        'by_syllables': [
+            {'syllables': s, 'count': syllable_counts[s]}
+            for s in sorted(syllable_counts)
+        ],
+        'by_pattern': [
+            {'pattern': p, 'count': c}
+            for p, c in sorted(pattern_counts.items(),
+                               key=lambda kv: (-kv[1], kv[0]))
+        ],
+    }
+
+    rhythmic_dict_rows = []
+    for key in sorted(counts.keys()):
+        n_syl, s_pos = key
+        c = counts[key]
+        p = proportions[key]
+        rhythmic_dict_rows.append({
+            'syllables': n_syl,
+            'stress': s_pos,
+            'count': c,
+            'proportion': p,
+        })
+
+    pattern_rows = []
+    for pattern in sorted(pattern_probs.keys(),
+                          key=lambda x: (-pattern_probs[x], x)):
+        pattern_rows.append({
+            'pattern': pattern,
+            'probability': pattern_probs[pattern],
+            'normalized': (pattern_probs[pattern] / total_pattern_prob)
+                          if total_pattern_prob > 0 else 0.0,
+        })
+
+    profile_rows = []
+    for pos in STRONG_POSITIONS:
+        profile_rows.append({
+            'position': pos,
+            'raw': raw_profile[pos],
+            'normalized': normalized_profile[pos],
+        })
+
+    return {
+        'total_words': total,
+        'skipped_chunks': skipped,
+        'rhythmic_dictionary': rhythmic_dict_rows,
+        'patterns': pattern_rows,
+        'profile': profile_rows,
+        'total_pattern_probability': total_pattern_prob,
+        'feminine_weight': feminine_weight,
+        'variant': variant,
+        'accidental_iambs': accidental_iambs,
+        'accidental_iamb_stats': accidental_iamb_stats,
+    }
