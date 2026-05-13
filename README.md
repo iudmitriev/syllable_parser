@@ -6,27 +6,52 @@ This application provides a way to automatically mark rythmic words in a text in
 
 ## Installation and usage
 
-Install the m2m-aligner from https://github.com/letter-to-phoneme/m2m-aligner/ following instructions
+### Prerequisites
 
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management. Install dependencies with:
+- `git`, `make`, a C++ compiler (for building m2m-aligner)
+- [`uv`](https://docs.astral.sh/uv/) for Python dependency management
+
+### Setup
+
+Install everything (m2m-aligner binary, Python deps, NLTK resources) with a single command:
 
 ```bash
-uv sync
+make setup
 ```
 
-You may run the application as a Flask server using server.py
+### Running
+
+Production server (gunicorn):
 
 ```bash
-uv run gunicorn -w 4 -b 0.0.0.0:5000 server:app
+make run
 ```
 
-Alternatively, you may use main.py file. You should paste the necessary text in text.txt file and then run the following command with the necessary rythm suggestion
+Development server (Flask debug mode):
+
+```bash
+make dev
+```
+
+Both serve on `http://0.0.0.0:5000`.
+
+### CLI usage
+
+Alternatively, use `main.py` directly. Paste the input text into `text.txt`, then run with the desired rythm:
 
 ```bash
 uv run main.py --rythm=iamb
 ```
 
-The resulting text will appear in the result.txt file
+The result will appear in `result.txt`.
+
+### Cleanup
+
+Remove the m2m-aligner clone and Python caches:
+
+```bash
+make clean
+```
 
 ## License
 
