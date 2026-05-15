@@ -134,6 +134,59 @@ function toast(message) {
     el._t = setTimeout(() => el.classList.remove('visible'), 1600);
 }
 
+function getCaretCharOffset(el) {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    if (!el.contains(range.endContainer)) return null;
+    const preRange = range.cloneRange();
+    preRange.selectNodeContents(el);
+    preRange.setEnd(range.endContainer, range.endOffset);
+    return preRange.toString().length;
+}
+
+function setCaretCharOffset(el, offset) {
+    if (offset == null) return;
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    let pos = 0;
+    let placed = false;
+    function walk(node) {
+        if (placed) return;
+        if (node.nodeType === Node.TEXT_NODE) {
+            const len = node.textContent.length;
+            if (pos + len >= offset) {
+                range.setStart(node, Math.max(0, offset - pos));
+                range.collapse(true);
+                placed = true;
+                return;
+            }
+            pos += len;
+        } else {
+            for (const child of node.childNodes) {
+                walk(child);
+                if (placed) return;
+            }
+        }
+    }
+    walk(el);
+    if (!placed) {
+        range.selectNodeContents(el);
+        range.collapse(false);
+    }
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
+function selectAllWithin(el) {
+    const range = document.createRange();
+    range.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+}
+
 function markedTextController(rawText, filename) {
     return {
         raw: rawText || '',
@@ -142,11 +195,70 @@ function markedTextController(rawText, filename) {
         init() {
             this.rendered = highlightMarkedText(this.raw);
         },
+        onInput(event) {
+            const el = event.currentTarget;
+            const offset = getCaretCharOffset(el);
+            this.raw = el.innerText.replace(/\r\n?/g, '\n');
+            this.rendered = highlightMarkedText(this.raw);
+            this.$nextTick(() => setCaretCharOffset(el, offset));
+        },
+        onKeyDown(event) {
+            if ((event.metaKey || event.ctrlKey) && (event.key === 'a' || event.key === 'A')) {
+                event.preventDefault();
+                selectAllWithin(event.currentTarget);
+                return;
+            }
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                document.execCommand('insertText', false, '\n');
+            }
+        },
+        onPaste(event) {
+            event.preventDefault();
+            const text = (event.clipboardData || window.clipboardData).getData('text');
+            document.execCommand('insertText', false, text);
+        },
         copy() {
             copyText(this.raw).then(ok => toast(ok ? 'Скопировано в буфер' : 'Не удалось скопировать'));
         },
         download() {
             downloadText(this.raw, this.filename);
+        },
+    };
+}
+
+function isFirstTypeIambPattern(pattern) {
+    if (!pattern) return false;
+    for (let i = 0; i < pattern.length; i++) {
+        if (pattern[i] === '/' && i % 2 === 0) return false;
+    }
+    return true;
+}
+
+function iambListController(items, filename) {
+    return {
+        items: Array.isArray(items) ? items : [],
+        filename: filename || 'accidental_iambs.txt',
+        hideFirstType: true,
+        init() {},
+        get filteredItems() {
+            if (!this.hideFirstType) return this.items;
+            return this.items.filter(it => !isFirstTypeIambPattern(it.pattern));
+        },
+        get visibleCount() {
+            return this.filteredItems.length;
+        },
+        get totalCount() {
+            return this.items.length;
+        },
+        get filteredText() {
+            return this.filteredItems.map(it => it.text).join('\n') + (this.filteredItems.length ? '\n' : '');
+        },
+        copy() {
+            copyText(this.filteredText).then(ok => toast(ok ? 'Скопировано в буфер' : 'Не удалось скопировать'));
+        },
+        download() {
+            downloadText(this.filteredText, this.filename);
         },
     };
 }

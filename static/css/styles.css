@@ -289,6 +289,8 @@ select { appearance: none; -webkit-appearance: none; background-image: linear-gr
     max-height: 60vh;
     overflow: auto;
 }
+.marked-text[contenteditable="true"] { caret-color: var(--accent); }
+.marked-text[contenteditable="true"]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .marked-text .stress { color: var(--highlight-stress); font-weight: 700; }
 .marked-text .phantom { color: var(--highlight-phantom); font-weight: 600; }
 .marked-text .unknown { color: var(--highlight-unknown); background: rgba(179, 64, 44, 0.1); padding: 0 2px; border-radius: 2px; }
@@ -400,6 +402,22 @@ table.data tbody tr:last-child td { border-bottom: 0; }
 .site-footer .container { display: flex; gap: var(--space-2); align-items: center; }
 .site-footer .dot { color: var(--border-strong); }
 .site-footer a { color: var(--fg-muted); }
+
+.filter-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--fg-muted);
+    font-size: 0.85rem;
+    cursor: pointer;
+    user-select: none;
+}
+.filter-toggle input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
 
 /* Iamb list — preformatted, one per line, easy to copy */
 pre.iamb-list {

@@ -114,18 +114,27 @@
         </div>
 
         <details style="margin-top: var(--space-4)"
-                 x-data="markedTextController($el.querySelector('pre.iamb-list').textContent, 'accidental_iambs.txt')"
+                 x-data='iambListController({{ result.accidental_iambs|tojson }}, "accidental_iambs.txt")'
                  x-init="init()">
-            <summary class="muted" style="cursor:pointer">Показать список ({{ result.accidental_iambs|length }})</summary>
+            <summary class="muted" style="cursor:pointer">
+                Показать список (<span x-text="visibleCount"></span> из <span x-text="totalCount"></span>)
+            </summary>
             <div class="result-header" style="margin-top: var(--space-3); margin-bottom: var(--space-2)">
-                <span class="muted" style="font-size: 0.85rem">Одна строка — один ямб</span>
+                <label class="filter-toggle" title="Оставить только ямбы, относящиеся к выбранному типу, но не к первому (стрессы только на сильных местах)">
+                    <input type="checkbox" x-model="hideFirstType">
+                    <span>Скрыть ямбы первого типа</span>
+                </label>
                 <div class="btn-row">
                     <button type="button" class="btn btn-ghost" x-on:click="copy()" title="Скопировать список">⧉ Копировать</button>
                     <button type="button" class="btn btn-ghost" x-on:click="download()" title="Скачать .txt">↓ Скачать</button>
                 </div>
             </div>
-            <pre class="iamb-list">{% for iamb in result.accidental_iambs %}{{ iamb.text }}
-{% endfor %}</pre>
+            <pre class="iamb-list" x-show="visibleCount > 0"><template x-for="(iamb, idx) in filteredItems" :key="idx"><span x-text="iamb.text + '\n'"></span></template></pre>
+            <p class="muted" x-show="visibleCount === 0" style="margin-top: var(--space-3)">
+                <template x-if="hideFirstType && totalCount > 0">
+                    <span>Все найденные ямбы относятся к первому типу. Снимите галочку, чтобы их увидеть.</span>
+                </template>
+            </p>
         </details>
     {% else %}
         <p class="muted">Не найдено.</p>

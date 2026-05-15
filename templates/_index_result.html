@@ -9,7 +9,13 @@
         </div>
     </div>
 
-    <pre class="marked-text" x-html="rendered"></pre>
+    <pre class="marked-text"
+         contenteditable="true"
+         spellcheck="false"
+         x-html="rendered"
+         x-on:input="onInput($event)"
+         x-on:keydown="onKeyDown($event)"
+         x-on:paste="onPaste($event)"></pre>
 
     <textarea data-raw hidden readonly>{{ processed_text }}</textarea>
 
