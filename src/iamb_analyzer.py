@@ -93,7 +93,8 @@ def _pattern_string(stressed_set, total_syllables):
 
 def _enumerate_for_template(proportions, template, total_syllables, weight,
                             allow_preceding_weak, required_positions,
-                            pattern_probs):
+                            pattern_probs, *, is_shifted=False,
+                            weak_stress_weight=1.0, shift_weight=1.0):
     template_set = set(template)
     n = len(template)
     for mask in range(1, 1 << n):
@@ -140,10 +141,16 @@ def _enumerate_for_template(proportions, template, total_syllables, weight,
                     prob *= p
                 if ok and prob > 0:
                     pattern = _pattern_string(set(all_stressed), total_syllables)
-                    pattern_probs[pattern] += prob * weight
+                    effective_weight = weight
+                    if is_shifted:
+                        effective_weight *= shift_weight
+                    if stressed_weak:
+                        effective_weight *= weak_stress_weight
+                    pattern_probs[pattern] += prob * effective_weight
 
 
-def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1):
+def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1,
+                            weak_stress_weight=1.0, shift_weight=1.0):
     """For each iamb stress pattern, sum the products of word proportions
     over all word-sequence combinations that realize that pattern.
 
@@ -158,6 +165,14 @@ def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1):
          a stressed strong position.
       3: variant 2, plus lines with a shifted first foot
          (strong positions 1, 4, 6, 8 — pattern /--/-/-/...).
+
+    `weak_stress_weight` (variant 2+): multiplier for patterns that have at
+    least one stress on a weak position immediately before a stressed strong
+    position. Applied in addition to feminine_weight where both are relevant.
+
+    `shift_weight` (variant 3+): multiplier for patterns generated from the
+    shifted-first-foot template (strong positions 1, 4, 6, 8). Applied in
+    addition to other weights where relevant.
     """
     if variant not in IAMB_VARIANTS:
         variant = 1
@@ -166,19 +181,19 @@ def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1):
 
     if variant == 0:
         # Variant 0: regular template, no weak stresses, position 8 required.
-        templates = [(STRONG_POSITIONS, False, {8})]
+        templates = [(STRONG_POSITIONS, False, {8}, False)]
     else:
         # Regular iamb template. In variant 2+, weak-position stresses are
         # also allowed immediately before a stressed strong position.
-        templates = [(STRONG_POSITIONS, variant >= 2, set())]
+        templates = [(STRONG_POSITIONS, variant >= 2, set(), False)]
         # Variant 3 additionally enumerates lines whose first foot is shifted
         # — strong position at 1 instead of 2. Requiring position 1 in the
         # stressed strong set ensures we don't double-count patterns that
         # would otherwise be reachable from the regular template.
         if variant >= 3:
-            templates.append((SHIFTED_STRONG_POSITIONS, True, {1}))
+            templates.append((SHIFTED_STRONG_POSITIONS, True, {1}, True))
 
-    for template, allow_weak, required in templates:
+    for template, allow_weak, required, is_shifted in templates:
         for total_syllables in (8, 9):
             weight = 1.0 if total_syllables == 8 else feminine_weight
             if weight == 0.0:
@@ -188,6 +203,9 @@ def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1):
                 allow_preceding_weak=allow_weak,
                 required_positions=required,
                 pattern_probs=pattern_probs,
+                is_shifted=is_shifted,
+                weak_stress_weight=weak_stress_weight,
+                shift_weight=shift_weight,
             )
 
     return dict(pattern_probs)
@@ -308,8 +326,11 @@ def compute_stress_profile(pattern_probs):
     return raw, normalized, total
 
 
-def analyze_iamb(text, feminine_weight=1.0, variant=1):
+def analyze_iamb(text, feminine_weight=1.0, variant=1,
+                 weak_stress_weight=1.0, shift_weight=1.0):
     feminine_weight = max(0.0, min(1.0, float(feminine_weight)))
+    weak_stress_weight = max(0.0, float(weak_stress_weight))
+    shift_weight = max(0.0, float(shift_weight))
     try:
         variant = int(variant)
     except (TypeError, ValueError):
@@ -319,6 +340,7 @@ def analyze_iamb(text, feminine_weight=1.0, variant=1):
     counts, proportions, total, skipped = compute_rhythmic_dictionary(text)
     pattern_probs = enumerate_iamb_patterns(
         proportions, feminine_weight=feminine_weight, variant=variant,
+        weak_stress_weight=weak_stress_weight, shift_weight=shift_weight,
     )
     raw_profile, normalized_profile, total_pattern_prob = compute_stress_profile(pattern_probs)
     accidental_iambs = find_accidental_iambs(

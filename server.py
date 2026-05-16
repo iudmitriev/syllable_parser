@@ -59,11 +59,15 @@ def process():
 def iamb():
     default_feminine_weight = 0.1
     default_variant = 1
+    default_weak_stress_weight = 1.0
+    default_shift_weight = 1.0
     if request.method == 'GET':
         return render_template(
             'iamb.html',
             feminine_weight=default_feminine_weight,
             variant=default_variant,
+            weak_stress_weight=default_weak_stress_weight,
+            shift_weight=default_shift_weight,
         )
 
     text_input = request.form.get('text_input', '')
@@ -84,7 +88,25 @@ def iamb():
     if variant not in (0, 1, 2, 3):
         variant = default_variant
 
-    result = analyze_iamb(text_input, feminine_weight=feminine_weight, variant=variant)
+    try:
+        weak_stress_weight = float(request.form.get('weak_stress_weight', default_weak_stress_weight))
+    except ValueError:
+        weak_stress_weight = default_weak_stress_weight
+    weak_stress_weight = max(0.0, weak_stress_weight)
+
+    try:
+        shift_weight = float(request.form.get('shift_weight', default_shift_weight))
+    except ValueError:
+        shift_weight = default_shift_weight
+    shift_weight = max(0.0, shift_weight)
+
+    result = analyze_iamb(
+        text_input,
+        feminine_weight=feminine_weight,
+        variant=variant,
+        weak_stress_weight=weak_stress_weight,
+        shift_weight=shift_weight,
+    )
 
     if is_htmx(request):
         return render_template('_iamb_result.html', result=result)
@@ -94,6 +116,8 @@ def iamb():
         submitted_text=text_input,
         feminine_weight=feminine_weight,
         variant=variant,
+        weak_stress_weight=weak_stress_weight,
+        shift_weight=shift_weight,
     )
 
 
