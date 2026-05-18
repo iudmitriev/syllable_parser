@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 m2m-aligner/
 phonemes_to_align*
+junk/

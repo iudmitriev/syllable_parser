@@ -391,6 +391,54 @@ table.data tbody tr:last-child td { border-bottom: 0; }
 .accordion .answer p, .accordion .answer ul { margin: 0 0 var(--space-2); }
 .accordion .answer ul { padding-left: var(--space-4); }
 
+/* Charts */
+.chart-wrap {
+    position: relative;
+    height: 320px;
+    margin-bottom: var(--space-4);
+}
+
+.pie-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: var(--space-4);
+    margin: var(--space-4) 0;
+}
+
+.pie-card {
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--space-3);
+}
+
+.pie-card-title {
+    font-size: 0.82rem;
+    color: var(--fg-muted);
+    font-weight: 500;
+    margin-bottom: var(--space-2);
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pie-wrap {
+    position: relative;
+    height: 170px;
+}
+
+/* Alert */
+.alert {
+    background: rgba(179, 64, 44, 0.08);
+    border: 1px solid rgba(179, 64, 44, 0.25);
+    color: var(--danger);
+    border-radius: var(--radius-sm);
+    padding: var(--space-3) var(--space-4);
+    margin-bottom: var(--space-4);
+    font-size: 0.9rem;
+}
+
 /* Footer */
 .site-footer {
     border-top: 1px solid var(--border);

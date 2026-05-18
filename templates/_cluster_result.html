@@ -1,0 +1,188 @@
+<div class="result">
+    <div class="result-header">
+        <h2 style="margin:0">Результаты кластеризации</h2>
+    </div>
+
+    <div class="stat-grid">
+        <div class="stat">
+            <div class="stat-label">Выбрано кластеров</div>
+            <div class="stat-value">{{ chosen_k }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat-label">Силуэтный коэффициент</div>
+            <div class="stat-value">{{ "%.4f"|format(chosen_score) }}</div>
+        </div>
+    </div>
+
+    <h3>Силуэтные коэффициенты по k</h3>
+    <div class="table-wrap">
+        <table class="data">
+            <thead>
+                <tr><th>k</th><th>Силуэтный коэффициент</th></tr>
+            </thead>
+            <tbody>
+                {% for row in scores %}
+                <tr {% if row.k == chosen_k %}style="color:var(--accent);font-weight:600"{% endif %}>
+                    <td>{{ row.k }}{% if row.k == chosen_k %} ✓{% endif %}</td>
+                    <td>{{ "%.4f"|format(row.score) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Средние значения по кластерам</h3>
+    <div class="chart-wrap">
+        <canvas id="means-chart"></canvas>
+    </div>
+
+    <div class="table-wrap" style="margin-top:var(--space-4)">
+        <table class="data">
+            <thead>
+                <tr>
+                    <th>Кластер</th>
+                    <th>I (iktus_1)</th>
+                    <th>II (iktus_2)</th>
+                    <th>III (iktus_3)</th>
+                    <th>IV (iktus_4)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in cluster_means %}
+                <tr>
+                    <td>{{ row.cluster }}</td>
+                    <td>{{ "%.4f"|format(row.iktus_1) }}</td>
+                    <td>{{ "%.4f"|format(row.iktus_2) }}</td>
+                    <td>{{ "%.4f"|format(row.iktus_3) }}</td>
+                    <td>{{ "%.4f"|format(row.iktus_4) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if author_cluster_data %}
+    <h3>Распределение по авторам</h3>
+    <div class="pie-grid">
+        {% for item in author_cluster_data %}
+        <div class="pie-card">
+            <div class="pie-card-title" title="{{ item.author }}">{{ item.author }}</div>
+            <div class="pie-wrap">
+                <canvas id="pie-{{ loop.index0 }}"></canvas>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="btn-row" style="margin-top:var(--space-5)">
+        <button class="btn"
+                data-b64="{{ file_b64 }}"
+                data-filename="{{ download_name }}"
+                onclick="downloadBase64(this.dataset.b64, this.dataset.filename)">
+            Скачать результаты кластеризации
+        </button>
+        <button class="btn btn-ghost"
+                data-b64="{{ means_b64 }}"
+                data-filename="{{ means_download_name }}"
+                onclick="downloadBase64(this.dataset.b64, this.dataset.filename)">
+            Скачать информацию о кластерах
+        </button>
+        {% if author_cluster_data %}
+        <button class="btn btn-ghost" onclick="downloadPieCharts()">
+            Скачать пай-чарты
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+(function () {
+    const COLORS = [
+        '#4e79a7', '#f28e2b', '#e15759', '#76b7b2',
+        '#59a14f', '#edc948', '#b07aa1', '#ff9da7',
+        '#9c755f', '#bab0ac'
+    ];
+
+    const style = getComputedStyle(document.documentElement);
+    const gridColor = style.getPropertyValue('--border').trim();
+    const textColor = style.getPropertyValue('--fg-muted').trim();
+
+    const meansData = {{ cluster_means | tojson }};
+    const authorData = {{ author_cluster_data | tojson }};
+    const nClusters = {{ chosen_k }};
+
+    // Line chart — mean iktus values per cluster
+    const meansCanvas = document.getElementById('means-chart');
+    if (meansCanvas) {
+        Chart.getChart(meansCanvas)?.destroy();
+        new Chart(meansCanvas, {
+            type: 'line',
+            data: {
+                labels: ['I', 'II', 'III', 'IV'],
+                datasets: meansData.map((row, i) => ({
+                    label: 'Кластер ' + row.cluster,
+                    data: [row.iktus_1, row.iktus_2, row.iktus_3, row.iktus_4],
+                    borderColor: COLORS[i % COLORS.length],
+                    backgroundColor: COLORS[i % COLORS.length] + '33',
+                    pointRadius: 5,
+                    pointHoverRadius: 7,
+                    tension: 0.2,
+                    fill: false,
+                }))
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { position: 'top', labels: { color: textColor } } },
+                scales: {
+                    y: {
+                        min: 0, max: 1,
+                        title: { display: true, text: 'Среднее значение', color: textColor },
+                        grid: { color: gridColor },
+                        ticks: { color: textColor }
+                    },
+                    x: {
+                        grid: { color: gridColor },
+                        ticks: { color: textColor }
+                    }
+                }
+            }
+        });
+    }
+
+    // Pie charts — cluster distribution per author
+    authorData.forEach(function (item, idx) {
+        const canvas = document.getElementById('pie-' + idx);
+        if (!canvas) return;
+        Chart.getChart(canvas)?.destroy();
+
+        const labels = [], data = [], colors = [];
+        for (let k = 0; k < nClusters; k++) {
+            if (item.counts[k] > 0) {
+                labels.push('Кластер ' + k);
+                data.push(item.counts[k]);
+                colors.push(COLORS[k % COLORS.length]);
+            }
+        }
+
+        new Chart(canvas, {
+            type: 'pie',
+            data: { labels: labels, datasets: [{ data: data, backgroundColor: colors }] },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { font: { size: 10 }, color: textColor, boxWidth: 12 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (ctx) { return ctx.label + ': ' + ctx.raw; }
+                        }
+                    }
+                }
+            }
+        });
+    });
+}());
+</script>

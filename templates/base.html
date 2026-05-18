@@ -11,6 +11,7 @@
     <script defer src="https://unpkg.com/htmx.org@1.9.12"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_head %}{% endblock %}
 </head>
 <body>
     <header class="site-header">
@@ -22,6 +23,7 @@
             <nav class="nav">
                 <a href="/" class="{% if active_page == 'index' %}is-active{% endif %}">Разметка</a>
                 <a href="/iamb" class="{% if active_page == 'iamb' %}is-active{% endif %}">Анализ ямба</a>
+                <a href="/cluster" class="{% if active_page == 'cluster' %}is-active{% endif %}">Кластеризация</a>
                 <a href="/explanations" class="{% if active_page == 'faq' %}is-active{% endif %}">FAQ</a>
             </nav>
             <button type="button" class="theme-toggle"

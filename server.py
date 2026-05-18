@@ -18,7 +18,11 @@ from main import mark_rythmic_text
 from src.iamb_analyzer import analyze_iamb
 
 from flask import Flask, render_template, request, send_file, make_response
-from io import StringIO
+from io import StringIO, BytesIO
+import base64
+
+import pandas as pd
+from src.cluster import run_clustering, compute_cluster_means, compute_author_cluster_counts
 
 app = Flask(__name__)
 
@@ -119,6 +123,75 @@ def iamb():
         weak_stress_weight=weak_stress_weight,
         shift_weight=shift_weight,
     )
+
+
+@app.route('/cluster', methods=['GET', 'POST'])
+def cluster():
+    if request.method == 'GET':
+        return render_template('cluster.html')
+
+    file_input = request.files.get('file_input')
+    if not file_input or not file_input.filename:
+        return render_template('cluster.html', error='Пожалуйста, загрузите файл.'), 400
+
+    try:
+        df = pd.read_excel(file_input, engine='openpyxl')
+    except Exception:
+        return render_template('cluster.html', error='Не удалось прочитать файл. Убедитесь, что загружен корректный .xlsx файл.'), 400
+
+    n_clusters = None
+    raw_k = request.form.get('n_clusters', '').strip()
+    if raw_k:
+        try:
+            n_clusters = int(raw_k)
+        except ValueError:
+            return render_template('cluster.html', error='Число кластеров должно быть целым числом.'), 400
+
+    try:
+        df_result, scores, chosen_k = run_clustering(df, n_clusters=n_clusters)
+    except ValueError as e:
+        return render_template('cluster.html', error=str(e)), 400
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_result.to_excel(writer, index=False)
+    output.seek(0)
+    file_b64 = base64.b64encode(output.read()).decode('ascii')
+
+    stem = file_input.filename.rsplit('.', 1)[0]
+    download_name = f'{stem}_clustered.xlsx'
+    chosen_score = next(s['score'] for s in scores if s['k'] == chosen_k)
+    cluster_means = compute_cluster_means(df_result, chosen_k)
+    author_cluster_data = (
+        compute_author_cluster_counts(df_result, chosen_k)
+        if 'author' in df_result.columns else []
+    )
+
+    means_df = pd.DataFrame([{
+        'Кластер': r['cluster'],
+        'I (iktus_1)': r['iktus_1'],
+        'II (iktus_2)': r['iktus_2'],
+        'III (iktus_3)': r['iktus_3'],
+        'IV (iktus_4)': r['iktus_4'],
+    } for r in cluster_means])
+    means_output = BytesIO()
+    with pd.ExcelWriter(means_output, engine='openpyxl') as writer:
+        means_df.to_excel(writer, index=False)
+    means_output.seek(0)
+    means_b64 = base64.b64encode(means_output.read()).decode('ascii')
+
+    ctx = dict(
+        scores=scores, chosen_k=chosen_k, chosen_score=chosen_score,
+        file_b64=file_b64, download_name=download_name,
+        cluster_means=cluster_means,
+        author_cluster_data=author_cluster_data,
+        means_b64=means_b64,
+        means_download_name=f'{stem}_cluster_means.xlsx',
+    )
+
+    if is_htmx(request):
+        return render_template('_cluster_result.html', **ctx)
+    return render_template('cluster.html', result=ctx, n_clusters=n_clusters)
 
 
 @app.route('/download_text')

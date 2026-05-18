@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% set active_page = 'cluster' %}
+{% block title %}Кластеризация профилей{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<h1>Кластеризация профилей ударности</h1>
+<p class="muted">
+    Загрузите файл в формате <code>stress_profile.xlsx</code>. Строки будут кластеризованы
+    по значениям столбцов <code>iktus_1</code>–<code>iktus_4</code> как точки в
+    четырёхмерном пространстве. Число кластеров можно указать вручную или оставить пустым —
+    тогда оно подберётся автоматически по максимуму силуэтного коэффициента (k = 4–10).
+</p>
+
+{% if error %}
+<div class="alert">{{ error }}</div>
+{% endif %}
+
+<form class="card"
+      hx-post="/cluster"
+      hx-target="#cluster-result"
+      hx-swap="innerHTML"
+      hx-encoding="multipart/form-data"
+      hx-indicator="#cluster-indicator">
+    <div class="form-grid">
+        <div x-data="fileDrop()">
+            <label class="field-label">Файл (.xlsx)</label>
+            <label class="file-drop"
+                   x-bind:class="{ 'is-dragover': dragover }"
+                   x-on:dragover.prevent="dragover = true"
+                   x-on:dragleave.prevent="dragover = false"
+                   x-on:drop.prevent="onDrop($event)">
+                <input type="file" name="file_input"
+                       accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                       x-ref="input" x-on:change="pick($event)">
+                <template x-if="!fileName">
+                    <span>
+                        <strong>Перетащите файл</strong> или нажмите для выбора
+                        <span class="file-hint" style="display:block">формат .xlsx</span>
+                    </span>
+                </template>
+                <template x-if="fileName">
+                    <span>
+                        <span class="file-name" x-text="fileName"></span>
+                        <button type="button" class="btn-ghost btn"
+                                style="margin-top:8px; padding:4px 10px; font-size:0.8rem"
+                                x-on:click="clear($event)">убрать</button>
+                    </span>
+                </template>
+            </label>
+        </div>
+
+        <div class="field-row">
+            <div class="field field-narrow">
+                <label class="field-label" for="n_clusters">
+                    Число кластеров (≥ 4, необязательно)
+                </label>
+                <input type="number" id="n_clusters" name="n_clusters"
+                       min="4" step="1" placeholder="авто"
+                       value="{{ n_clusters if n_clusters is not none else '' }}">
+            </div>
+        </div>
+
+        <div class="btn-row">
+            <button class="btn" type="submit">Кластеризовать</button>
+            <span id="cluster-indicator" class="htmx-indicator">
+                <span class="spinner"></span> Кластеризуем…
+            </span>
+        </div>
+    </div>
+</form>
+
+<div id="cluster-result">
+    {% if result %}
+        {% with scores=result.scores, chosen_k=result.chosen_k, chosen_score=result.chosen_score,
+                file_b64=result.file_b64, download_name=result.download_name,
+                cluster_means=result.cluster_means, author_cluster_data=result.author_cluster_data,
+                means_b64=result.means_b64, means_download_name=result.means_download_name %}
+            {% include '_cluster_result.html' %}
+        {% endwith %}
+    {% endif %}
+</div>
+{% endblock %}

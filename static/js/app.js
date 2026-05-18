@@ -108,6 +108,76 @@ function fallbackCopy(text) {
     return ok;
 }
 
+function downloadPieCharts() {
+    const cards = Array.from(document.querySelectorAll('.pie-card'));
+    if (!cards.length) return;
+
+    const COLS = 4, ROWS = 3, PER_PAGE = COLS * ROWS;
+    const CW = 270, CH = 215;
+    const PAD = 8, TITLE_H = 22;
+    const pageW = COLS * CW, pageH = ROWS * CH;
+    const pages = Math.ceil(cards.length / PER_PAGE);
+
+    for (let p = 0; p < pages; p++) {
+        const pc = document.createElement('canvas');
+        pc.width = pageW;
+        pc.height = pageH;
+        const ctx = pc.getContext('2d');
+
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, pageW, pageH);
+
+        const start = p * PER_PAGE;
+        const end = Math.min(start + PER_PAGE, cards.length);
+
+        for (let i = start; i < end; i++) {
+            const card = cards[i];
+            const src = card.querySelector('canvas');
+            const title = card.querySelector('.pie-card-title')?.textContent?.trim() || '';
+            const pos = i - start;
+            const col = pos % COLS, row = Math.floor(pos / COLS);
+            const x = col * CW, y = row * CH;
+
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x + 0.5, y + 0.5, CW - 1, CH - 1);
+
+            ctx.fillStyle = '#555555';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(title, x + CW / 2, y + TITLE_H / 2 + 2, CW - 2 * PAD);
+
+            if (src) {
+                ctx.drawImage(src, x + PAD, y + TITLE_H + PAD, CW - 2 * PAD, CH - TITLE_H - 2 * PAD);
+            }
+        }
+
+        const fname = pages > 1 ? `pie_charts_${p + 1}.png` : 'pie_charts.png';
+        const link = document.createElement('a');
+        link.href = pc.toDataURL('image/png');
+        link.download = fname;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+}
+
+function downloadBase64(b64, filename) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename || 'result.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function downloadText(text, filename) {
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
