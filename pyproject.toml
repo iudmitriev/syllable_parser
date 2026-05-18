@@ -10,6 +10,9 @@ dependencies = [
     "flask",
     "gunicorn",
     "nltk",
+    "pandas",
+    "openpyxl",
+    "scikit-learn",
 ]
 
 [tool.uv]
