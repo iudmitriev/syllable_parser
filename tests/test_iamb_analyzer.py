@@ -326,6 +326,69 @@ class EnumerateIambVariantsTests(unittest.TestCase):
         self.assertLessEqual(p1, p2 + 1e-12)
         self.assertLessEqual(p2, p3 + 1e-12)
 
+    def test_variant_4_includes_variant_2_patterns(self):
+        proportions = {(1, 1): 0.3, (2, 2): 0.3, (3, 2): 0.2, (3, 3): 0.2}
+        v2 = enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=2)
+        v4 = enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=4)
+        self.assertTrue(v2)
+        for pattern, prob in v2.items():
+            self.assertIn(pattern, v4)
+            self.assertAlmostEqual(v4[pattern], prob)
+
+    def test_variant_4_allows_shifted_first_foot(self):
+        # /--/-/-/ stresses position 1 (weak) with no stress at 2 — position 1
+        # is the boundary exception, so variant 4 accepts it.
+        proportions = {(1, 1): 0.4, (3, 3): 0.3, (2, 2): 0.3}
+        v3 = enumerate_iamb_patterns(proportions, feminine_weight=0.0, variant=3)
+        v4 = enumerate_iamb_patterns(proportions, feminine_weight=0.0, variant=4)
+        self.assertIn('/--/-/-/', v3)
+        self.assertIn('/--/-/-/', v4)
+
+    def test_variant_4_allows_weak_stress_following_strong(self):
+        # -/-/-//- has stresses {2, 4, 6, 7}. Position 7 is weak and preceded
+        # by stressed strong 6 — variants 1..3 reject this (weak stresses must
+        # immediately precede a stressed strong), variant 4 accepts it.
+        # Only decomposition: (2,2)(2,2)(2,2)(2,1).
+        proportions = {(2, 2): 0.4, (2, 1): 0.3, (1, 1): 0.3}
+        v2 = enumerate_iamb_patterns(proportions, feminine_weight=0.0, variant=2)
+        v3 = enumerate_iamb_patterns(proportions, feminine_weight=0.0, variant=3)
+        v4 = enumerate_iamb_patterns(proportions, feminine_weight=0.0, variant=4)
+        self.assertNotIn('-/-/-//-', v2)
+        self.assertNotIn('-/-/-//-', v3)
+        self.assertIn('-/-/-//-', v4)
+        self.assertAlmostEqual(v4['-/-/-//-'], 0.4 * 0.4 * 0.4 * 0.3)
+
+    def test_variant_4_rejects_isolated_weak_stress(self):
+        # Variant 4: every stressed weak position (other than position 1)
+        # must have at least one stressed neighbour. Position 1 is the
+        # boundary exception and is excluded from this check.
+        proportions = {(1, 1): 0.3, (2, 2): 0.3, (3, 2): 0.2, (3, 3): 0.2,
+                       (2, 1): 0.2, (4, 2): 0.2, (4, 3): 0.2}
+        v4 = enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=4)
+        self.assertTrue(v4)
+        non_boundary_weak = {3, 5, 7}
+        for pattern in v4:
+            stresses = {idx + 1 for idx, ch in enumerate(pattern) if ch == '/'}
+            for w in stresses & non_boundary_weak:
+                self.assertTrue(
+                    (w - 1) in stresses or (w + 1) in stresses,
+                    msg=f'variant 4 produced isolated weak stress at {w} in {pattern}'
+                )
+
+    def test_variant_4_weak_stress_weight_scales_weak_patterns(self):
+        proportions = {(2, 2): 0.4, (2, 1): 0.3, (1, 1): 0.3}
+        full = enumerate_iamb_patterns(proportions, feminine_weight=0.0,
+                                       variant=4, weak_stress_weight=1.0)
+        half = enumerate_iamb_patterns(proportions, feminine_weight=0.0,
+                                       variant=4, weak_stress_weight=0.5)
+        weak_positions = {1, 3, 5, 7}
+        self.assertTrue(full)
+        for pattern, prob in full.items():
+            stresses = {idx + 1 for idx, ch in enumerate(pattern) if ch == '/'}
+            has_weak = bool(stresses & weak_positions)
+            expected = prob * (0.5 if has_weak else 1.0)
+            self.assertAlmostEqual(half[pattern], expected)
+
 
 class AnalyzeIambTests(unittest.TestCase):
     def test_analyze_returns_expected_keys(self):
@@ -390,6 +453,14 @@ class AnalyzeIambTests(unittest.TestCase):
         p3 = analyze_iamb(text, feminine_weight=1.0, variant=3)['total_pattern_probability']
         self.assertLessEqual(p1, p2 + 1e-12)
         self.assertLessEqual(p2, p3 + 1e-12)
+
+    def test_variant_4_passed_through_and_at_least_variant_2(self):
+        with open(os.path.join(FIXTURES, 'sample_input.txt')) as f:
+            text = f.read()
+        result4 = analyze_iamb(text, feminine_weight=1.0, variant=4)
+        self.assertEqual(result4['variant'], 4)
+        p2 = analyze_iamb(text, feminine_weight=1.0, variant=2)['total_pattern_probability']
+        self.assertLessEqual(p2, result4['total_pattern_probability'] + 1e-12)
 
     def test_accidental_iamb_stats_match_list(self):
         text = ("the Wo<rd| the Wo<rd| the Wo<rd| the Wo<rd|"
@@ -488,6 +559,23 @@ class FindAccidentalIambsTests(unittest.TestCase):
         v3_patterns = {i['pattern'] for i in v3}
         self.assertNotIn('/--/-/-/', v2_patterns)
         self.assertIn('/--/-/-/', v3_patterns)
+
+    def test_variant_4_picks_up_following_weak_stress(self):
+        # (2,2)(2,2)(2,2)(2,1) -> stresses {2,4,6,7} -> -/-/-//-.
+        # Variant 2/3 reject the trailing weak stress; variant 4 accepts it.
+        # `a<e` is a synthetic 2-syllable chunk with stress on the first vowel.
+        text = "the Wo<rd| the Wo<rd| the Wo<rd| a<e|"
+        v3 = find_accidental_iambs(text, feminine_weight=0.0, variant=3)
+        v4 = find_accidental_iambs(text, feminine_weight=0.0, variant=4)
+        self.assertNotIn('-/-/-//-', {i['pattern'] for i in v3})
+        self.assertIn('-/-/-//-', {i['pattern'] for i in v4})
+
+    def test_variant_4_allows_shifted_first_foot(self):
+        # (1,1)(3,3)(2,2)(2,2) -> /--/-/-/ — stressed position 1 is the
+        # boundary exception, so variant 4 accepts it (just like variant 3).
+        text = "wa<s| aoo<| the Wo<rd| the Wo<rd|"
+        v4 = find_accidental_iambs(text, feminine_weight=0.0, variant=4)
+        self.assertIn('/--/-/-/', {i['pattern'] for i in v4})
 
     def test_multi_stress_chunk_breaks_run(self):
         # "a< e<" has two stresses -> parse_rhythmic_word returns None,

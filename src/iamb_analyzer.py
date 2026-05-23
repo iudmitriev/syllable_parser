@@ -7,8 +7,9 @@ STRESS_MARK = '<'
 
 STRONG_POSITIONS = (2, 4, 6, 8)
 SHIFTED_STRONG_POSITIONS = (1, 4, 6, 8)
+WEAK_POSITIONS = (1, 3, 5, 7)
 
-IAMB_VARIANTS = (0, 1, 2, 3)
+IAMB_VARIANTS = (0, 1, 2, 3, 4)
 
 
 def parse_rhythmic_word(rword):
@@ -149,6 +150,66 @@ def _enumerate_for_template(proportions, template, total_syllables, weight,
                     pattern_probs[pattern] += prob * effective_weight
 
 
+def _is_valid_variant_4_stress_set(stressed):
+    """Variant 4 rule: every stressed weak position must have at least one
+    stressed adjacent position, with one exception — position 1 is always
+    allowed to carry a stress (its missing left neighbour does not count
+    against it). Positions outside the line at the right end are treated
+    as unstressed. Empty stress sets are rejected.
+    """
+    if not stressed:
+        return False
+    weak = set(WEAK_POSITIONS)
+    for w in stressed:
+        if w in weak and w != 1:
+            if (w - 1) not in stressed and (w + 1) not in stressed:
+                return False
+    return True
+
+
+def _enumerate_variant_4(proportions, total_syllables, weight, pattern_probs,
+                         *, weak_stress_weight=1.0):
+    """Enumerate every stress set on positions 1..8 satisfying the variant-4
+    rule and accumulate decomposition probabilities for each."""
+    candidate_positions = tuple(range(1, 9))
+    n = len(candidate_positions)
+    weak = set(WEAK_POSITIONS)
+    for mask in range(1, 1 << n):
+        stressed = {candidate_positions[i] for i in range(n) if mask & (1 << i)}
+        if not _is_valid_variant_4_stress_set(stressed):
+            continue
+        all_stressed = sorted(stressed)
+        m = len(all_stressed)
+        ranges = []
+        for i in range(m - 1):
+            ranges.append(range(all_stressed[i], all_stressed[i + 1]))
+        has_weak = any(p in weak for p in stressed)
+        for inner in product(*ranges):
+            bounds = [0] + list(inner) + [total_syllables]
+            if bounds[-1] < all_stressed[-1]:
+                continue
+            prob = 1.0
+            ok = True
+            for i in range(m):
+                n_syl = bounds[i + 1] - bounds[i]
+                s_pos = all_stressed[i] - bounds[i]
+                if n_syl <= 0 or s_pos <= 0 or s_pos > n_syl:
+                    ok = False
+                    break
+                key = (n_syl, s_pos)
+                p = proportions.get(key, 0.0)
+                if p == 0.0:
+                    ok = False
+                    break
+                prob *= p
+            if ok and prob > 0:
+                pattern = _pattern_string(stressed, total_syllables)
+                effective_weight = weight
+                if has_weak:
+                    effective_weight *= weak_stress_weight
+                pattern_probs[pattern] += prob * effective_weight
+
+
 def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1,
                             weak_stress_weight=1.0, shift_weight=1.0):
     """For each iamb stress pattern, sum the products of word proportions
@@ -165,19 +226,33 @@ def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1,
          a stressed strong position.
       3: variant 2, plus lines with a shifted first foot
          (strong positions 1, 4, 6, 8 — pattern /--/-/-/...).
+      4: any stress set is allowed as long as no stressed weak position
+         (other than position 1) has both neighbours unstressed. Position 1
+         may always be stressed regardless of position 2.
 
     `weak_stress_weight` (variant 2+): multiplier for patterns that have at
-    least one stress on a weak position immediately before a stressed strong
-    position. Applied in addition to feminine_weight where both are relevant.
+    least one stress on a weak position. Applied in addition to
+    feminine_weight where both are relevant.
 
-    `shift_weight` (variant 3+): multiplier for patterns generated from the
+    `shift_weight` (variant 3): multiplier for patterns generated from the
     shifted-first-foot template (strong positions 1, 4, 6, 8). Applied in
-    addition to other weights where relevant.
+    addition to other weights where relevant. Has no effect on variant 4.
     """
     if variant not in IAMB_VARIANTS:
         variant = 1
 
     pattern_probs = defaultdict(float)
+
+    if variant == 4:
+        for total_syllables in (8, 9):
+            weight = 1.0 if total_syllables == 8 else feminine_weight
+            if weight == 0.0:
+                continue
+            _enumerate_variant_4(
+                proportions, total_syllables, weight, pattern_probs,
+                weak_stress_weight=weak_stress_weight,
+            )
+        return dict(pattern_probs)
 
     if variant == 0:
         # Variant 0: regular template, no weak stresses, position 8 required.
@@ -242,6 +317,8 @@ def _is_valid_iamb_pattern(stresses, total_syllables, variant):
             stresses, STRONG_POSITIONS,
             allow_preceding_weak=False, required={8},
         )
+    if variant == 4:
+        return _is_valid_variant_4_stress_set(stresses)
     if _stresses_match_template(
         stresses, STRONG_POSITIONS,
         allow_preceding_weak=variant >= 2, required=set(),

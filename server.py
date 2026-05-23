@@ -89,7 +89,7 @@ def iamb():
         variant = int(request.form.get('variant', default_variant))
     except ValueError:
         variant = default_variant
-    if variant not in (0, 1, 2, 3):
+    if variant not in (0, 1, 2, 3, 4):
         variant = default_variant
 
     try:
