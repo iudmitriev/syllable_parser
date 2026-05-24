@@ -140,25 +140,71 @@
         <p class="muted">Не найдено.</p>
     {% endif %}
 
-    <h3>Вероятности ямбических комбинаций</h3>
+    <h3>Распределение по формам ямба</h3>
+    <p class="muted">
+        Форма ямба задаётся ударностью сильных позиций (2, 4, 6, 8) независимо
+        от ударности слабых. Колонки «Male» и «Female» нормированы отдельно
+        (каждая сумма = 1); «Total» считается как
+        (1 − w<sub>ж</sub>)·Male + w<sub>ж</sub>·Female.
+    </p>
     <div class="table-wrap">
         <table class="data sortable">
             <thead>
                 <tr>
+                    <th>#</th>
                     <th>Схема</th>
-                    <th>Вероятность</th>
-                    <th>Нормализованная</th>
+                    <th>Male</th>
+                    <th>Female</th>
+                    <th>Total</th>
                 </tr>
             </thead>
             <tbody>
-                {% for row in result.patterns %}
+                {% for row in result.iamb_forms %}
                 <tr>
+                    <td>{{ row.form_number }}</td>
                     <td class="pattern">{{ row.pattern }}</td>
-                    <td>{{ '%.6f'|format(row.probability) }}</td>
-                    <td>{{ '%.5f'|format(row.normalized) }}</td>
+                    <td>{{ '%.5f'|format(row.male) }}</td>
+                    <td>{{ '%.5f'|format(row.female) }}</td>
+                    <td>{{ '%.5f'|format(row.total) }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
+    {% if forms_b64 %}
+    <div class="btn-row" style="margin-top:var(--space-3)">
+        <button class="btn"
+                data-b64="{{ forms_b64 }}"
+                data-filename="{{ forms_download_name }}"
+                onclick="downloadBase64(this.dataset.b64, this.dataset.filename)">
+            ↓ Скачать .xlsx
+        </button>
+    </div>
+    {% endif %}
+
+    <details style="margin-top: var(--space-4)">
+        <summary class="muted" style="cursor:pointer">
+            Показать вероятности по полным схемам ({{ result.patterns|length }})
+        </summary>
+        <div class="table-wrap" style="margin-top: var(--space-3)">
+            <table class="data sortable">
+                <thead>
+                    <tr>
+                        <th>Схема</th>
+                        <th>Вероятность</th>
+                        <th>Нормализованная</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in result.patterns %}
+                    <tr>
+                        <td class="pattern">{{ row.pattern }}</td>
+                        <td>{{ '%.6f'|format(row.probability) }}</td>
+                        <td>{{ '%.5f'|format(row.normalized) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </details>
 </div>
