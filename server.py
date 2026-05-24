@@ -112,8 +112,27 @@ def iamb():
         shift_weight=shift_weight,
     )
 
+    forms_df = pd.DataFrame([{
+        '#': r['form_number'],
+        'Схема': r['pattern'],
+        'Male': r['male'],
+        'Female': r['female'],
+        'Total': r['total'],
+    } for r in result['iamb_forms']])
+    forms_buf = BytesIO()
+    with pd.ExcelWriter(forms_buf, engine='openpyxl') as writer:
+        forms_df.to_excel(writer, index=False, sheet_name='Iamb forms')
+    forms_buf.seek(0)
+    forms_b64 = base64.b64encode(forms_buf.read()).decode('ascii')
+    forms_download_name = 'iamb_forms.xlsx'
+
     if is_htmx(request):
-        return render_template('_iamb_result.html', result=result)
+        return render_template(
+            '_iamb_result.html',
+            result=result,
+            forms_b64=forms_b64,
+            forms_download_name=forms_download_name,
+        )
     return render_template(
         'iamb.html',
         result=result,
@@ -122,6 +141,8 @@ def iamb():
         variant=variant,
         weak_stress_weight=weak_stress_weight,
         shift_weight=shift_weight,
+        forms_b64=forms_b64,
+        forms_download_name=forms_download_name,
     )
 
 

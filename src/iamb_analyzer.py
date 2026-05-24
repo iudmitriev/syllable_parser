@@ -210,6 +210,60 @@ def _enumerate_variant_4(proportions, total_syllables, weight, pattern_probs,
                 pattern_probs[pattern] += prob * effective_weight
 
 
+def _enumerate_for_length(proportions, variant, total_syllables, pattern_probs,
+                          *, weak_stress_weight=1.0, shift_weight=1.0):
+    """Populate `pattern_probs` for a single line length, with unit weight
+    (no feminine_weight applied)."""
+    if variant == 4:
+        _enumerate_variant_4(
+            proportions, total_syllables, 1.0, pattern_probs,
+            weak_stress_weight=weak_stress_weight,
+        )
+        return
+
+    if variant == 0:
+        templates = [(STRONG_POSITIONS, False, {8}, False)]
+    else:
+        templates = [(STRONG_POSITIONS, variant >= 2, set(), False)]
+        if variant >= 3:
+            templates.append((SHIFTED_STRONG_POSITIONS, True, {1}, True))
+
+    for template, allow_weak, required, is_shifted in templates:
+        _enumerate_for_template(
+            proportions, template, total_syllables, 1.0,
+            allow_preceding_weak=allow_weak,
+            required_positions=required,
+            pattern_probs=pattern_probs,
+            is_shifted=is_shifted,
+            weak_stress_weight=weak_stress_weight,
+            shift_weight=shift_weight,
+        )
+
+
+def enumerate_iamb_patterns_split(proportions, variant=1,
+                                  weak_stress_weight=1.0, shift_weight=1.0):
+    """Return (male_pattern_probs, female_pattern_probs) — pattern probability
+    masses for 8- and 9-syllable iambs respectively, without any feminine
+    weighting applied. Each dict maps a pattern string (length 8 or 9) to a
+    mass; the relative sizes within each dict reflect the model probabilities
+    of those patterns, while the sum across each dict reflects the model's
+    likelihood of producing an iambic line of that length at all.
+    """
+    if variant not in IAMB_VARIANTS:
+        variant = 1
+    male = defaultdict(float)
+    female = defaultdict(float)
+    _enumerate_for_length(
+        proportions, variant, 8, male,
+        weak_stress_weight=weak_stress_weight, shift_weight=shift_weight,
+    )
+    _enumerate_for_length(
+        proportions, variant, 9, female,
+        weak_stress_weight=weak_stress_weight, shift_weight=shift_weight,
+    )
+    return dict(male), dict(female)
+
+
 def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1,
                             weak_stress_weight=1.0, shift_weight=1.0):
     """For each iamb stress pattern, sum the products of word proportions
@@ -238,52 +292,17 @@ def enumerate_iamb_patterns(proportions, feminine_weight=1.0, variant=1,
     shifted-first-foot template (strong positions 1, 4, 6, 8). Applied in
     addition to other weights where relevant. Has no effect on variant 4.
     """
-    if variant not in IAMB_VARIANTS:
-        variant = 1
-
-    pattern_probs = defaultdict(float)
-
-    if variant == 4:
-        for total_syllables in (8, 9):
-            weight = 1.0 if total_syllables == 8 else feminine_weight
-            if weight == 0.0:
-                continue
-            _enumerate_variant_4(
-                proportions, total_syllables, weight, pattern_probs,
-                weak_stress_weight=weak_stress_weight,
-            )
-        return dict(pattern_probs)
-
-    if variant == 0:
-        # Variant 0: regular template, no weak stresses, position 8 required.
-        templates = [(STRONG_POSITIONS, False, {8}, False)]
-    else:
-        # Regular iamb template. In variant 2+, weak-position stresses are
-        # also allowed immediately before a stressed strong position.
-        templates = [(STRONG_POSITIONS, variant >= 2, set(), False)]
-        # Variant 3 additionally enumerates lines whose first foot is shifted
-        # — strong position at 1 instead of 2. Requiring position 1 in the
-        # stressed strong set ensures we don't double-count patterns that
-        # would otherwise be reachable from the regular template.
-        if variant >= 3:
-            templates.append((SHIFTED_STRONG_POSITIONS, True, {1}, True))
-
-    for template, allow_weak, required, is_shifted in templates:
-        for total_syllables in (8, 9):
-            weight = 1.0 if total_syllables == 8 else feminine_weight
-            if weight == 0.0:
-                continue
-            _enumerate_for_template(
-                proportions, template, total_syllables, weight,
-                allow_preceding_weak=allow_weak,
-                required_positions=required,
-                pattern_probs=pattern_probs,
-                is_shifted=is_shifted,
-                weak_stress_weight=weak_stress_weight,
-                shift_weight=shift_weight,
-            )
-
-    return dict(pattern_probs)
+    male, female = enumerate_iamb_patterns_split(
+        proportions, variant=variant,
+        weak_stress_weight=weak_stress_weight, shift_weight=shift_weight,
+    )
+    combined = defaultdict(float)
+    for pattern, mass in male.items():
+        combined[pattern] += mass
+    if feminine_weight > 0:
+        for pattern, mass in female.items():
+            combined[pattern] += mass * feminine_weight
+    return dict(combined)
 
 
 def _stresses_match_template(stresses, template, allow_preceding_weak, required):
@@ -385,6 +404,81 @@ def find_accidental_iambs(text, feminine_weight=1.0, variant=1):
     return iambs
 
 
+def _iamb_form_order():
+    """Return the 16 form signatures (s2, s4, s6, s8) in canonical order:
+    first by stress on position 8 (stressed first), then by total number of
+    stresses on strong positions (descending), then by the unstressed strong
+    positions among {2, 4, 6} in ascending lexicographic order.
+    """
+    forms = []
+    for stress_8 in (True, False):
+        candidates = []
+        for s2, s4, s6 in product((True, False), repeat=3):
+            sig = (s2, s4, s6, stress_8)
+            unstressed_246 = tuple(
+                p for p, s in zip((2, 4, 6), (s2, s4, s6)) if not s
+            )
+            candidates.append((sig, unstressed_246))
+        candidates.sort(key=lambda item: (-sum(item[0]), item[1]))
+        forms.extend(sig for sig, _ in candidates)
+    return forms
+
+
+def _iamb_form_pattern(sig):
+    """Render an 8-character pattern for a form signature."""
+    chars = []
+    for pos in range(1, 9):
+        if pos in STRONG_POSITIONS:
+            idx = (pos // 2) - 1
+            chars.append('/' if sig[idx] else '-')
+        else:
+            chars.append('-')
+    return ''.join(chars)
+
+
+def _form_signature_from_pattern(pattern):
+    return tuple(
+        (pos - 1) < len(pattern) and pattern[pos - 1] == '/'
+        for pos in STRONG_POSITIONS
+    )
+
+
+def compute_iamb_forms(male_probs, female_probs, feminine_weight):
+    """Aggregate pattern masses into the 16 iamb forms defined by the stress
+    pattern at strong positions (2, 4, 6, 8). For each form, return three
+    probabilities:
+
+    - male:   normalized share of the form among 8-syllable iambs (∑ = 1).
+    - female: normalized share of the form among 9-syllable iambs (∑ = 1).
+    - total:  (1 - feminine_weight) * male + feminine_weight * female.
+    """
+    male_by_form = defaultdict(float)
+    female_by_form = defaultdict(float)
+    for pattern, mass in male_probs.items():
+        male_by_form[_form_signature_from_pattern(pattern)] += mass
+    for pattern, mass in female_probs.items():
+        female_by_form[_form_signature_from_pattern(pattern)] += mass
+
+    male_total = sum(male_by_form.values())
+    female_total = sum(female_by_form.values())
+
+    rows = []
+    for i, sig in enumerate(_iamb_form_order(), 1):
+        m_mass = male_by_form.get(sig, 0.0)
+        f_mass = female_by_form.get(sig, 0.0)
+        m_norm = m_mass / male_total if male_total > 0 else 0.0
+        f_norm = f_mass / female_total if female_total > 0 else 0.0
+        total = (1.0 - feminine_weight) * m_norm + feminine_weight * f_norm
+        rows.append({
+            'form_number': i,
+            'pattern': _iamb_form_pattern(sig),
+            'male': m_norm,
+            'female': f_norm,
+            'total': total,
+        })
+    return rows
+
+
 def compute_stress_profile(pattern_probs):
     """For each strong position, compute the total probability mass of
     patterns that have a stress at that position. Also returns the
@@ -415,11 +509,19 @@ def analyze_iamb(text, feminine_weight=1.0, variant=1,
     if variant not in IAMB_VARIANTS:
         variant = 1
     counts, proportions, total, skipped = compute_rhythmic_dictionary(text)
-    pattern_probs = enumerate_iamb_patterns(
-        proportions, feminine_weight=feminine_weight, variant=variant,
+    male_probs, female_probs = enumerate_iamb_patterns_split(
+        proportions, variant=variant,
         weak_stress_weight=weak_stress_weight, shift_weight=shift_weight,
     )
+    pattern_probs = defaultdict(float)
+    for pattern, mass in male_probs.items():
+        pattern_probs[pattern] += mass
+    if feminine_weight > 0:
+        for pattern, mass in female_probs.items():
+            pattern_probs[pattern] += mass * feminine_weight
+    pattern_probs = dict(pattern_probs)
     raw_profile, normalized_profile, total_pattern_prob = compute_stress_profile(pattern_probs)
+    iamb_forms = compute_iamb_forms(male_probs, female_probs, feminine_weight)
     accidental_iambs = find_accidental_iambs(
         text, feminine_weight=feminine_weight, variant=variant,
     )
@@ -482,4 +584,5 @@ def analyze_iamb(text, feminine_weight=1.0, variant=1,
         'variant': variant,
         'accidental_iambs': accidental_iambs,
         'accidental_iamb_stats': accidental_iamb_stats,
+        'iamb_forms': iamb_forms,
     }

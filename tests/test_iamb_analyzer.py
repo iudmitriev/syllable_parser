@@ -398,6 +398,7 @@ class AnalyzeIambTests(unittest.TestCase):
             'patterns', 'profile', 'total_pattern_probability',
             'feminine_weight', 'variant',
             'accidental_iambs', 'accidental_iamb_stats',
+            'iamb_forms',
         }
         self.assertEqual(set(result.keys()), expected_keys)
 
